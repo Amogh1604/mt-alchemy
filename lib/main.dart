@@ -5,6 +5,7 @@ import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:video_player/video_player.dart';
 import 'firebase_options.dart';
 
 Future<void> main() async {
@@ -18,11 +19,11 @@ Future<void> main() async {
 }
 
 
-const Color navy = Color(0xFF142B55);
-const Color blue = Color(0xFF244A86);
-const Color yellow = Color(0xFFFFD66B);
-const Color purple = Color(0xFF7555B7);
-const Color pageBg = Color(0xFFF6F7FB);
+const Color navy = Color(0xFF151515);
+const Color blue = Color(0xFF2C2B29);
+const Color yellow = Color(0xFFD6B15D);
+const Color purple = Color(0xFF8A6A25);
+const Color pageBg = Color(0xFFF7F4EC);
 
 
 /// Writes a prototype activity record. Firestore rules restrict who may create
@@ -65,28 +66,104 @@ class MTAlchemyApp extends StatelessWidget {
       theme: ThemeData(
         useMaterial3: true,
         scaffoldBackgroundColor: pageBg,
-        colorScheme: ColorScheme.fromSeed(seedColor: navy),
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: navy,
+          primary: navy,
+          secondary: yellow,
+          surface: Colors.white,
+        ),
         fontFamily: 'Arial',
+        visualDensity: VisualDensity.standard,
         appBarTheme: const AppBarTheme(
           backgroundColor: Colors.white,
           foregroundColor: navy,
           elevation: 0,
+          scrolledUnderElevation: 2,
+          centerTitle: false,
+          surfaceTintColor: Colors.transparent,
+        ),
+        cardTheme: CardThemeData(
+          color: Colors.white,
+          elevation: 0,
+          margin: EdgeInsets.zero,
+          surfaceTintColor: Colors.transparent,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+            side: const BorderSide(color: Color(0xFFE7D9B6)),
+          ),
+        ),
+        inputDecorationTheme: InputDecorationTheme(
+          filled: true,
+          fillColor: const Color(0xFFFFFCF5),
+          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 17),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(14),
+            borderSide: const BorderSide(color: Color(0xFFD8C99F)),
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(14),
+            borderSide: const BorderSide(color: Color(0xFFD8C99F)),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(14),
+            borderSide: const BorderSide(color: purple, width: 1.7),
+          ),
+          errorBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(14),
+            borderSide: const BorderSide(color: Color(0xFFCC4343)),
+          ),
+          focusedErrorBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(14),
+            borderSide: const BorderSide(color: Color(0xFFCC4343), width: 1.7),
+          ),
         ),
         filledButtonTheme: FilledButtonThemeData(
           style: ButtonStyle(
             animationDuration: const Duration(milliseconds: 220),
+            elevation: const WidgetStatePropertyAll(0),
+            padding: const WidgetStatePropertyAll(
+              EdgeInsets.symmetric(horizontal: 22, vertical: 16),
+            ),
+            textStyle: const WidgetStatePropertyAll(
+              TextStyle(fontWeight: FontWeight.w700, letterSpacing: 0.1),
+            ),
             shape: WidgetStatePropertyAll(
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
             ),
           ),
         ),
         outlinedButtonTheme: OutlinedButtonThemeData(
           style: ButtonStyle(
             animationDuration: const Duration(milliseconds: 220),
+            padding: const WidgetStatePropertyAll(
+              EdgeInsets.symmetric(horizontal: 20, vertical: 15),
+            ),
+            side: const WidgetStatePropertyAll(
+              BorderSide(color: Color(0xFFD8C99F)),
+            ),
+            textStyle: const WidgetStatePropertyAll(
+              TextStyle(fontWeight: FontWeight.w700),
+            ),
             shape: WidgetStatePropertyAll(
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
             ),
           ),
+        ),
+        snackBarTheme: SnackBarThemeData(
+          behavior: SnackBarBehavior.floating,
+          backgroundColor: const Color(0xFF171717),
+          contentTextStyle: const TextStyle(color: Colors.white),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+        ),
+        dialogTheme: DialogThemeData(
+          backgroundColor: Colors.white,
+          surfaceTintColor: Colors.transparent,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        ),
+        dividerTheme: const DividerThemeData(
+          color: Color(0xFFE7D9B6),
+          thickness: 1,
+          space: 1,
         ),
       ),
       home: const MainWebsite(),
@@ -155,7 +232,7 @@ const List<Course> courses = [
     'Business',
     'Learn planning, delivery and project coordination.',
     Icons.task_alt_rounded,
-    Color(0xFF168A79),
+    Color(0xFF00A99D),
   ),
 ];
 
@@ -572,7 +649,7 @@ class _MainWebsiteState extends State<MainWebsite> {
                 child: Chip(
                   avatar: const Icon(Icons.account_circle, color: purple, size: 20),
                   label: Text('${signedInName ?? 'Account'} • $signedInRole'),
-                  backgroundColor: const Color(0xFFF0ECFA),
+                  backgroundColor: const Color(0xFFF4E9CC),
                   side: BorderSide.none,
                 ),
               ),
@@ -781,6 +858,77 @@ class _FloatingIconState extends State<FloatingIcon>
   }
 }
 
+
+// Full-bleed looping background video for the Home page hero.
+class HeroBackgroundVideo extends StatefulWidget {
+  const HeroBackgroundVideo({super.key});
+
+  @override
+  State<HeroBackgroundVideo> createState() => _HeroBackgroundVideoState();
+}
+
+class _HeroBackgroundVideoState extends State<HeroBackgroundVideo> {
+  VideoPlayerController? _controller;
+  bool _failed = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _initialize();
+  }
+
+  Future<void> _initialize() async {
+    final controller = VideoPlayerController.asset(
+      'assets/videos/hero_background.mp4',
+    );
+    _controller = controller;
+    try {
+      await controller.initialize();
+      await controller.setLooping(true);
+      await controller.setVolume(0);
+      await controller.play();
+      if (mounted) setState(() {});
+    } catch (_) {
+      if (mounted) setState(() => _failed = true);
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller?.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final controller = _controller;
+    if (_failed || controller == null || !controller.value.isInitialized) {
+      return const DecoratedBox(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: [navy, blue, purple],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+        ),
+      );
+    }
+
+    return ClipRect(
+      child: SizedBox.expand(
+        child: FittedBox(
+          fit: BoxFit.cover,
+          child: SizedBox(
+            width: controller.value.size.width,
+            height: controller.value.size.height,
+            child: VideoPlayer(controller),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 // -------------------- HOME PAGE --------------------
 
 class HomePage extends StatelessWidget {
@@ -798,139 +946,118 @@ class HomePage extends StatelessWidget {
         children: [
           Container(
             width: double.infinity,
-            padding: EdgeInsets.symmetric(
-              horizontal: horizontal,
-              vertical: width < 600 ? 45 : 76,
-            ),
-            decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                colors: [navy, blue, purple],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-            ),
-            child: Wrap(
-              spacing: 40,
-              runSpacing: 35,
-              alignment: WrapAlignment.spaceBetween,
-              crossAxisAlignment: WrapCrossAlignment.center,
+            decoration: const BoxDecoration(),
+            clipBehavior: Clip.antiAlias,
+            child: Stack(
               children: [
-                SizedBox(
-                  width: width < 600 ? width - 44 : 520,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 14,
-                          vertical: 8,
-                        ),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.12),
-                          borderRadius: BorderRadius.circular(30),
-                          border: Border.all(
-                            color: Colors.white.withValues(alpha: 0.25),
-                          ),
-                        ),
-                        child: const Text(
-                          'YOUR PARTNER IN LEARNING & GROWTH',
-                          style: TextStyle(
-                            color: yellow,
-                            fontSize: 11,
-                            fontWeight: FontWeight.bold,
-                            letterSpacing: 1,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 25),
-                      const Text(
-                        'Unlock Your Potential.\nTransform Your Future.',
-                        style: TextStyle(
-                          fontSize: 42,
-                          height: 1.17,
-                          color: Colors.white,
-                          fontWeight: FontWeight.w900,
-                        ),
-                      ),
-                      const SizedBox(height: 20),
-                      const Text(
-                        'Discover learning experiences, professional development '
-                            'programmes and digital resources designed to help '
-                            'individuals and organisations grow.',
-                        style: TextStyle(
-                          color: Color(0xFFE4E9F6),
-                          height: 1.8,
-                          fontSize: 15,
-                        ),
-                      ),
-                      const SizedBox(height: 30),
-                      Wrap(
-                        spacing: 12,
-                        runSpacing: 12,
-                        children: [
-                          FilledButton(
-                            style: FilledButton.styleFrom(
-                              backgroundColor: yellow,
-                              foregroundColor: navy,
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 24,
-                                vertical: 18,
-                              ),
-                            ),
-                            onPressed: () => onNavigate('Learning Hub'),
-                            child: const Text('Explore Learning'),
-                          ),
-                          OutlinedButton(
-                            style: OutlinedButton.styleFrom(
-                              foregroundColor: Colors.white,
-                              side: const BorderSide(color: Colors.white70),
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 24,
-                                vertical: 18,
-                              ),
-                            ),
-                            onPressed: () => onNavigate('Contact'),
-                            child: const Text('Contact Us'),
-                          ),
+                const Positioned.fill(child: HeroBackgroundVideo()),
+                Positioned.fill(
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [
+                          navy.withValues(alpha: 0.90),
+                          blue.withValues(alpha: 0.78),
+                          purple.withValues(alpha: 0.70),
                         ],
+                        begin: Alignment.centerLeft,
+                        end: Alignment.centerRight,
                       ),
-                    ],
-                  ),
-                ),
-                Container(
-                  width: width < 600 ? width - 44 : 330,
-                  padding: const EdgeInsets.all(30),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.10),
-                    borderRadius: BorderRadius.circular(28),
-                    border: Border.all(
-                      color: Colors.white.withValues(alpha: 0.2),
                     ),
                   ),
-                  child: const Column(
+                ),
+                Padding(
+                  padding: EdgeInsets.symmetric(
+                    horizontal: horizontal,
+                    vertical: width < 600 ? 45 : 76,
+                  ),
+                  child: Wrap(
+                    spacing: 40,
+                    runSpacing: 35,
+                    alignment: WrapAlignment.spaceBetween,
+                    crossAxisAlignment: WrapCrossAlignment.center,
                     children: [
-                      FloatingIcon(
-                        icon: Icons.auto_awesome,
-                        size: 75,
-                        color: yellow,
-                      ),
-                      SizedBox(height: 18),
-                      Text(
-                        'Learning that creates impact',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          fontSize: 23,
-                          color: Colors.white,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      SizedBox(height: 12),
-                      Text(
-                        'Build knowledge. Develop skills. Make a difference.',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          color: Colors.white70,
-                          height: 1.6,
+                      SizedBox(
+                        width: width < 600 ? width - 44 : 520,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 14,
+                                vertical: 8,
+                              ),
+                              decoration: BoxDecoration(
+                                color: Colors.white.withValues(alpha: 0.12),
+                                borderRadius: BorderRadius.circular(30),
+                                border: Border.all(
+                                  color: Colors.white.withValues(alpha: 0.25),
+                                ),
+                              ),
+                              child: const Text(
+                                'YOUR PARTNER IN LEARNING & GROWTH',
+                                style: TextStyle(
+                                  color: yellow,
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.bold,
+                                  letterSpacing: 1,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 25),
+                            Text(
+                              'Unlock Your Potential.\nTransform Your Future.',
+                              style: TextStyle(
+                                fontSize: width < 600 ? 34 : 46,
+                                height: 1.12,
+                                letterSpacing: -0.8,
+                                color: Colors.white,
+                                fontWeight: FontWeight.w900,
+                              ),
+                            ),
+                            const SizedBox(height: 20),
+                            const Text(
+                              'Discover learning experiences, professional development '
+                                  'programmes and digital resources designed to help '
+                                  'individuals and organisations grow.',
+                              style: TextStyle(
+                                color: Color(0xFFE4E9F6),
+                                height: 1.8,
+                                fontSize: 15,
+                              ),
+                            ),
+                            const SizedBox(height: 30),
+                            Wrap(
+                              spacing: 12,
+                              runSpacing: 12,
+                              children: [
+                                FilledButton(
+                                  style: FilledButton.styleFrom(
+                                    backgroundColor: yellow,
+                                    foregroundColor: navy,
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 24,
+                                      vertical: 18,
+                                    ),
+                                  ),
+                                  onPressed: () => onNavigate('Learning Hub'),
+                                  child: const Text('Explore Learning'),
+                                ),
+                                OutlinedButton(
+                                  style: OutlinedButton.styleFrom(
+                                    foregroundColor: Colors.white,
+                                    side: const BorderSide(color: Colors.white70),
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 24,
+                                      vertical: 18,
+                                    ),
+                                  ),
+                                  onPressed: () => onNavigate('Contact'),
+                                  child: const Text('Contact Us'),
+                                ),
+                              ],
+                            ),
+                          ],
                         ),
                       ),
                     ],
@@ -939,7 +1066,107 @@ class HomePage extends StatelessWidget {
               ],
             ),
           ),
-          const SizedBox(height: 45),
+          const SizedBox(height: 42),
+          Padding(
+            padding: EdgeInsets.symmetric(horizontal: horizontal),
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 1250),
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  final stacked = constraints.maxWidth < 760;
+                  final image = ClipRRect(
+                    borderRadius: BorderRadius.circular(24),
+                    child: Stack(
+                      fit: StackFit.expand,
+                      children: [
+                        Image.network(
+                          'https://images.unsplash.com/photo-1521737711867-e3b97375f902?auto=format&fit=crop&w=1400&q=85',
+                          fit: BoxFit.cover,
+                          loadingBuilder: (context, child, progress) => progress == null
+                              ? child
+                              : Container(
+                            color: const Color(0xFF28251F),
+                            child: const Center(
+                              child: CircularProgressIndicator(color: yellow),
+                            ),
+                          ),
+                          errorBuilder: (context, error, stack) => Container(
+                            color: const Color(0xFF28251F),
+                            child: const Center(
+                              child: Icon(Icons.groups_rounded, color: yellow, size: 90),
+                            ),
+                          ),
+                        ),
+                        DecoratedBox(
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              begin: Alignment.bottomCenter,
+                              end: Alignment.topCenter,
+                              colors: [Colors.black.withValues(alpha: .78), Colors.transparent],
+                            ),
+                          ),
+                        ),
+                        const Positioned(
+                          left: 22,
+                          right: 22,
+                          bottom: 22,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text('LEARN TOGETHER', style: TextStyle(color: yellow, letterSpacing: 2, fontWeight: FontWeight.bold, fontSize: 11)),
+                              SizedBox(height: 7),
+                              Text('Build skills that move you forward.', style: TextStyle(color: Colors.white, fontSize: 23, fontWeight: FontWeight.w800)),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                  final copy = Container(
+                    padding: const EdgeInsets.all(28),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF201F1C),
+                      borderRadius: BorderRadius.circular(24),
+                      border: Border.all(color: yellow.withValues(alpha: .38)),
+                    ),
+                    child: const Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.auto_awesome_rounded, color: yellow, size: 34),
+                        SizedBox(height: 18),
+                        Text('GROW WITH PURPOSE', style: TextStyle(color: yellow, letterSpacing: 2, fontSize: 11, fontWeight: FontWeight.bold)),
+                        SizedBox(height: 12),
+                        Text('A better you starts with one new skill.', style: TextStyle(color: Colors.white, fontSize: 27, height: 1.2, fontWeight: FontWeight.w800)),
+                        SizedBox(height: 12),
+                        Text('Explore practical learning, expert-led development and resources designed to turn ambition into progress.', style: TextStyle(color: Color(0xFFD7D1C5), height: 1.7)),
+                      ],
+                    ),
+                  );
+                  return stacked
+                      ? Column(children: [SizedBox(height: 270, child: image), const SizedBox(height: 16), copy])
+                      : Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(
+                        flex: 6,
+                        child: SizedBox(
+                          height: 340,
+                          child: image,
+                        ),
+                      ),
+                      const SizedBox(width: 18),
+                      Expanded(
+                        flex: 4,
+                        child: copy,
+                      ),
+                    ],
+                  );
+                },
+              ),
+            ),
+          ),
+          const SizedBox(height: 48),
           SectionHeading(
             eyebrow: 'WHAT WE OFFER',
             title: 'Everything you need to grow',
@@ -959,6 +1186,7 @@ class HomePage extends StatelessWidget {
                   description:
                   'Explore courses and develop practical professional skills.',
                   color: navy,
+                  imageUrl: 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?auto=format&fit=crop&w=900&q=85',
                   onTap: () => onNavigate('Learning Hub'),
                 ),
                 FeatureCard(
@@ -967,6 +1195,7 @@ class HomePage extends StatelessWidget {
                   description:
                   'Discover digital learning materials and useful resources.',
                   color: purple,
+                  imageUrl: 'https://images.unsplash.com/photo-1507842217343-583bb7270b66?auto=format&fit=crop&w=900&q=85',
                   onTap: () => onNavigate('Digital Store'),
                 ),
                 FeatureCard(
@@ -974,7 +1203,8 @@ class HomePage extends StatelessWidget {
                   title: 'Corporate Training',
                   description:
                   'Find learning solutions designed for organisations and teams.',
-                  color: const Color(0xFF168A79),
+                  color: const Color(0xFF8A6A25),
+                  imageUrl: 'https://images.unsplash.com/photo-1521737711867-e3b97375f902?auto=format&fit=crop&w=900&q=85',
                   onTap: () => onNavigate('Services'),
                 ),
               ],
@@ -1000,6 +1230,14 @@ class HomePage extends StatelessWidget {
               }).toList(),
             ),
           ),
+          const SizedBox(height: 48),
+          Padding(
+            padding: EdgeInsets.symmetric(horizontal: horizontal),
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 1250),
+              child: const LearningVideoSection(),
+            ),
+          ),
           const SizedBox(height: 45),
           Container(
             width: double.infinity,
@@ -1007,7 +1245,7 @@ class HomePage extends StatelessWidget {
               horizontal: horizontal,
               vertical: 42,
             ),
-            color: const Color(0xFFFFF2CB),
+            color: const Color(0xFFF3E5BF),
             child: Wrap(
               spacing: 25,
               runSpacing: 20,
@@ -1054,6 +1292,132 @@ class HomePage extends StatelessWidget {
   }
 }
 
+// -------------------- FEATURE VIDEO --------------------
+
+class LearningVideoSection extends StatefulWidget {
+  const LearningVideoSection({super.key});
+
+  @override
+  State<LearningVideoSection> createState() => _LearningVideoSectionState();
+}
+
+class _LearningVideoSectionState extends State<LearningVideoSection> {
+  late final VideoPlayerController _controller;
+  bool _ready = false;
+  bool _failed = false;
+  bool _isPlaying = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = VideoPlayerController.networkUrl(
+      Uri.parse('https://flutter.github.io/assets-for-api-docs/assets/videos/bee.mp4'),
+    )..initialize().then((_) {
+      if (!mounted) return;
+      setState(() {
+        _ready = true;
+        _isPlaying = _controller.value.isPlaying;
+      });
+    }).catchError((_) {
+      if (mounted) setState(() => _failed = true);
+    });
+    _controller.addListener(_handleVideoUpdate);
+    _controller.setLooping(false);
+  }
+
+  // Do not rebuild this entire video section on every playback frame.
+  // VideoProgressIndicator listens to the controller itself; rebuild only when
+  // play/pause state changes. This avoids unnecessary web layout and mouse work.
+  void _handleVideoUpdate() {
+    if (!mounted) return;
+    final playing = _controller.value.isPlaying;
+    if (playing != _isPlaying) {
+      setState(() => _isPlaying = playing);
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.removeListener(_handleVideoUpdate);
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final width = MediaQuery.sizeOf(context).width;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text('WATCH • LEARN • GROW', style: TextStyle(color: Color(0xFF9A762B), letterSpacing: 2, fontWeight: FontWeight.bold, fontSize: 11)),
+        const SizedBox(height: 9),
+        Text('Learning in motion', style: TextStyle(color: navy, fontSize: width < 600 ? 27 : 34, fontWeight: FontWeight.w900, letterSpacing: -.5)),
+        const SizedBox(height: 8),
+        const Text('A featured video experience for your learning journey.', style: TextStyle(color: Color(0xFF6F6A60), height: 1.6)),
+        const SizedBox(height: 22),
+        ClipRRect(
+          borderRadius: BorderRadius.circular(22),
+          child: Container(
+            color: const Color(0xFF171717),
+            child: AspectRatio(
+              aspectRatio: _ready ? _controller.value.aspectRatio : 16 / 9,
+              child: Stack(
+                alignment: Alignment.center,
+                children: [
+                  if (_ready)
+                    VideoPlayer(_controller)
+                  else if (_failed)
+                    const Center(child: Text('Video could not load. Check your internet connection.', style: TextStyle(color: Colors.white), textAlign: TextAlign.center))
+                  else
+                    const Center(child: CircularProgressIndicator(color: Color(0xFFD6B15D))),
+                  if (_ready)
+                    Positioned(
+                      left: 12, right: 12, bottom: 12,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+                        decoration: BoxDecoration(color: Colors.black.withValues(alpha: .68), borderRadius: BorderRadius.circular(14)),
+                        child: Row(children: [
+                          IconButton(
+                            tooltip: _isPlaying ? 'Pause video' : 'Play video',
+                            onPressed: () {
+                              if (_isPlaying) {
+                                _controller.pause();
+                              } else {
+                                _controller.play();
+                              }
+                            },
+                            icon: Icon(_isPlaying ? Icons.pause_rounded : Icons.play_arrow_rounded, color: yellow),
+                          ),
+                          Expanded(child: VideoProgressIndicator(_controller, allowScrubbing: true, colors: const VideoProgressColors(playedColor: Color(0xFFD6B15D), bufferedColor: Colors.white38, backgroundColor: Colors.white24))),
+                          const SizedBox(width: 12),
+                          ValueListenableBuilder<VideoPlayerValue>(
+                            valueListenable: _controller,
+                            builder: (context, value, child) => Text(
+                              _formatDuration(value.position),
+                              style: const TextStyle(color: Colors.white, fontSize: 11),
+                            ),
+                          ),
+                        ]),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(height: 12),
+        const Row(children: [Icon(Icons.verified_rounded, color: Color(0xFF9A762B), size: 18), SizedBox(width: 8), Expanded(child: Text('Embedded sample video player — replace the sample URL with an approved MT Alchemy training video.', style: TextStyle(color: Color(0xFF6F6A60), fontSize: 12, height: 1.5)))]),
+      ],
+    );
+  }
+
+  String _formatDuration(Duration duration) {
+    final minutes = duration.inMinutes.remainder(60).toString().padLeft(2, '0');
+    final seconds = duration.inSeconds.remainder(60).toString().padLeft(2, '0');
+    return '$minutes:$seconds';
+  }
+}
+
 // -------------------- ABOUT PAGE --------------------
 
 class AboutPage extends StatelessWidget {
@@ -1064,16 +1428,19 @@ class AboutPage extends StatelessWidget {
       'icon': Icons.lightbulb_outline,
       'title': 'Innovation',
       'text': 'Encouraging new ideas and continuous improvement.',
+      'imageUrl': 'https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?auto=format&fit=crop&w=900&q=85',
     },
     {
       'icon': Icons.handshake_outlined,
       'title': 'Collaboration',
       'text': 'Supporting people and organisations to grow together.',
+      'imageUrl': 'https://images.unsplash.com/photo-1521737711867-e3b97375f902?auto=format&fit=crop&w=900&q=85',
     },
     {
       'icon': Icons.trending_up,
       'title': 'Growth',
       'text': 'Building skills and creating meaningful learning outcomes.',
+      'imageUrl': 'https://images.unsplash.com/photo-1552664730-d307ca884978?auto=format&fit=crop&w=900&q=85',
     },
   ];
 
@@ -1121,6 +1488,7 @@ class AboutPage extends StatelessWidget {
                         title: value['title'] as String,
                         description: value['text'] as String,
                         color: purple,
+                        imageUrl: value['imageUrl'] as String,
                       );
                     }).toList(),
                   ),
@@ -1170,7 +1538,64 @@ class ServicesPage extends StatelessWidget {
             subtitle:
             'Learning and development experiences for individuals and organisations.',
           ),
-          const SizedBox(height: 35),
+          const SizedBox(height: 28),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 24),
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 1200),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(24),
+                child: SizedBox(
+                  height: 220,
+                  width: double.infinity,
+                  child: Stack(
+                    fit: StackFit.expand,
+                    children: [
+                      Image.network(
+                        'https://images.unsplash.com/photo-1521737711867-e3b97375f902?auto=format&fit=crop&w=1600&q=85',
+                        fit: BoxFit.cover,
+                        errorBuilder: (context, error, stack) => Container(
+                          color: navy,
+                          child: const Icon(Icons.groups_rounded, color: yellow, size: 70),
+                        ),
+                      ),
+                      DecoratedBox(
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            begin: Alignment.centerLeft,
+                            end: Alignment.centerRight,
+                            colors: [
+                              Colors.black.withValues(alpha: 0.78),
+                              Colors.transparent,
+                            ],
+                          ),
+                        ),
+                      ),
+                      Padding(
+                        padding: const EdgeInsets.all(28),
+                        child: Align(
+                          alignment: Alignment.centerLeft,
+                          child: ConstrainedBox(
+                            constraints: const BoxConstraints(maxWidth: 520),
+                            child: Text(
+                              'Build stronger teams through continuous learning.',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 27,
+                                fontWeight: FontWeight.w800,
+                                height: 1.2,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 28),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 24),
             child: Wrap(
@@ -1182,24 +1607,28 @@ class ServicesPage extends StatelessWidget {
                   title: 'Learning Programmes',
                   text:
                   'Explore structured learning experiences and professional development.',
+                  imageUrl: 'https://images.unsplash.com/photo-1522202176988-66273c2fd55f?auto=format&fit=crop&w=900&q=85',
                 ),
                 ServiceCard(
                   icon: Icons.groups_2_outlined,
                   title: 'Corporate Training',
                   text:
                   'Plan training opportunities around organisational needs.',
+                  imageUrl: 'https://images.unsplash.com/photo-1552664730-d307ca884978?auto=format&fit=crop&w=900&q=85',
                 ),
                 ServiceCard(
                   icon: Icons.analytics_outlined,
                   title: 'Learning Progress',
                   text:
                   'Support learning oversight and progress reporting for teams.',
+                  imageUrl: 'https://images.unsplash.com/photo-1551288049-bebda4e38f71?auto=format&fit=crop&w=900&q=85',
                 ),
                 ServiceCard(
                   icon: Icons.devices_outlined,
                   title: 'Digital Resources',
                   text:
                   'Access digital materials that support learning and development.',
+                  imageUrl: 'https://images.unsplash.com/photo-1507842217343-583bb7270b66?auto=format&fit=crop&w=900&q=85',
                 ),
               ],
             ),
@@ -1517,7 +1946,7 @@ class StorePage extends StatelessWidget {
                         decoration: BoxDecoration(
                           color: Colors.white,
                           borderRadius: BorderRadius.circular(20),
-                          border: Border.all(color: const Color(0xFFE5E8F0)),
+                          border: Border.all(color: const Color(0xFFE8E0CF)),
                         ),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -2235,7 +2664,7 @@ class MyDigitalProductsPage extends StatelessWidget {
                   color: Colors.white,
                   margin: const EdgeInsets.only(bottom: 12),
                   child: ListTile(
-                    leading: const CircleAvatar(backgroundColor: Color(0xFFF0ECFA), child: Icon(Icons.menu_book_outlined, color: purple)),
+                    leading: const CircleAvatar(backgroundColor: Color(0xFFF4E9CC), child: Icon(Icons.menu_book_outlined, color: purple)),
                     title: Text(product['title'] as String, style: const TextStyle(fontWeight: FontWeight.bold, color: navy)),
                     subtitle: Text((product['description'] as String).isEmpty
                         ? 'Order ${product['orderId']}'
@@ -2687,7 +3116,7 @@ class _LoginPageState extends State<LoginPage> {
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(24),
-            border: Border.all(color: const Color(0xFFE5E8F0)),
+            border: Border.all(color: const Color(0xFFE8E0CF)),
           ),
           child: Form(
             key: formKey,
@@ -3132,11 +3561,11 @@ class _RoleDashboardPageState extends State<RoleDashboardPage> {
                     fillColor: Colors.white,
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(14),
-                      borderSide: const BorderSide(color: Color(0xFFE5E8F0)),
+                      borderSide: const BorderSide(color: Color(0xFFE8E0CF)),
                     ),
                     enabledBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(14),
-                      borderSide: const BorderSide(color: Color(0xFFE5E8F0)),
+                      borderSide: const BorderSide(color: Color(0xFFE8E0CF)),
                     ),
                   ),
                 ),
@@ -3454,7 +3883,7 @@ class _AdminAnalyticsPanel extends StatelessWidget {
     final roleColors = <String, Color>{
       'Individual': navy,
       'Employer': blue,
-      'Trainer': const Color(0xFF168A79),
+      'Trainer': const Color(0xFF00A99D),
       'Super Admin': purple,
     };
 
@@ -3487,7 +3916,7 @@ class _AdminAnalyticsPanel extends StatelessWidget {
                     child: LinearProgressIndicator(
                       minHeight: 9,
                       value: totalUsers == 0 ? 0 : (roleCounts[role] ?? 0) / totalUsers,
-                      backgroundColor: const Color(0xFFECEFF5),
+                      backgroundColor: const Color(0xFFEEE8DA),
                       valueColor: AlwaysStoppedAnimation<Color>(roleColors[role]!),
                     ),
                   ),
@@ -4301,7 +4730,7 @@ class IndividualLearningDashboard extends StatelessWidget {
                         Text('$progress%', style: const TextStyle(color: purple, fontWeight: FontWeight.bold)),
                       ]),
                       const SizedBox(height: 12),
-                      ClipRRect(borderRadius: BorderRadius.circular(20), child: LinearProgressIndicator(value: progress / 100, minHeight: 8, backgroundColor: const Color(0xFFE8EAF1), color: purple)),
+                      ClipRRect(borderRadius: BorderRadius.circular(20), child: LinearProgressIndicator(value: progress / 100, minHeight: 8, backgroundColor: const Color(0xFFE5DDCC), color: purple)),
                       const SizedBox(height: 12),
                       Wrap(
                         spacing: 10,
@@ -4422,7 +4851,7 @@ class IndividualLearningDashboard extends StatelessWidget {
                           child: LinearProgressIndicator(
                             value: (score.clamp(0, 100)) / 100,
                             minHeight: 7,
-                            backgroundColor: const Color(0xFFE8EAF1),
+                            backgroundColor: const Color(0xFFE5DDCC),
                             color: passed ? Colors.green : Colors.deepOrange,
                           ),
                         ),
@@ -4536,7 +4965,7 @@ class PageBanner extends StatelessWidget {
   final String title;
   final String subtitle;
 
-  PageBanner({
+  const PageBanner({
     super.key,
     required this.title,
     required this.subtitle,
@@ -4544,37 +4973,103 @@ class PageBanner extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final width = MediaQuery.sizeOf(context).width;
+    final compact = width < 600;
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 48),
+      clipBehavior: Clip.antiAlias,
       decoration: const BoxDecoration(
         gradient: LinearGradient(
-          colors: [navy, purple],
-          begin: Alignment.centerLeft,
-          end: Alignment.centerRight,
+          colors: [Color(0xFF102449), Color(0xFF244A86), Color(0xFF7555B7)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
         ),
       ),
-      child: Column(
+      child: Stack(
         children: [
-          Text(
-            title,
-            textAlign: TextAlign.center,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 34,
-              fontWeight: FontWeight.bold,
+          Positioned(
+            right: compact ? -75 : 30,
+            top: -95,
+            child: Container(
+              width: compact ? 190 : 260,
+              height: compact ? 190 : 260,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                border: Border.all(color: Colors.white.withValues(alpha: 0.10), width: 28),
+              ),
             ),
           ),
-          const SizedBox(height: 12),
-          ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 650),
-            child: Text(
-              subtitle,
-              textAlign: TextAlign.center,
-              style: const TextStyle(
-                color: Colors.white70,
-                fontSize: 15,
-                height: 1.7,
+          Positioned(
+            left: -65,
+            bottom: -105,
+            child: Container(
+              width: 190,
+              height: 190,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: yellow.withValues(alpha: 0.07),
+              ),
+            ),
+          ),
+          Padding(
+            padding: EdgeInsets.symmetric(horizontal: compact ? 22 : 40, vertical: compact ? 42 : 58),
+            child: Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 950),
+                child: Column(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 7),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(30),
+                        border: Border.all(color: Colors.white.withValues(alpha: 0.18)),
+                      ),
+                      child: const Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.auto_awesome_rounded, size: 14, color: yellow),
+                          SizedBox(width: 7),
+                          Text('MT ALCHEMY  •  LEARN & GROW', style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w800, letterSpacing: 1.2)),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                    Text(
+                      title,
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: compact ? 30 : 40,
+                        height: 1.12,
+                        letterSpacing: -0.7,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+                    ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 690),
+                      child: Text(
+                        subtitle,
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          color: const Color(0xFFF1E5C8),
+                          fontSize: compact ? 14 : 16,
+                          height: 1.8,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 18),
+                    Container(
+                      width: 54,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(10),
+                        gradient: const LinearGradient(colors: [yellow, Color(0xFFFFF0C2)]),
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
@@ -4615,17 +5110,18 @@ class SectionHeading extends StatelessWidget {
           Text(
             title,
             textAlign: TextAlign.center,
-            style: const TextStyle(
+            style: TextStyle(
               color: navy,
-              fontWeight: FontWeight.w800,
-              fontSize: 28,
+              fontWeight: FontWeight.w900,
+              letterSpacing: -0.45,
+              fontSize: MediaQuery.sizeOf(context).width < 600 ? 25 : 31,
             ),
           ),
           const SizedBox(height: 10),
           Text(
             subtitle,
             textAlign: TextAlign.center,
-            style: const TextStyle(color: Colors.black54, height: 1.6),
+            style: const TextStyle(color: Color(0xFF65718A), height: 1.7, fontSize: 14),
           ),
         ],
       ),
@@ -4638,6 +5134,7 @@ class FeatureCard extends StatefulWidget {
   final String title;
   final String description;
   final Color color;
+  final String? imageUrl;
   final VoidCallback? onTap;
 
   const FeatureCard({
@@ -4646,6 +5143,7 @@ class FeatureCard extends StatefulWidget {
     required this.title,
     required this.description,
     required this.color,
+    this.imageUrl,
     this.onTap,
   });
 
@@ -4668,80 +5166,129 @@ class _FeatureCardState extends State<FeatureCard> {
         duration: const Duration(milliseconds: 240),
         curve: Curves.easeOutCubic,
         width: 285,
-        transform: Matrix4.translationValues(0, _hovering ? -7 : 0, 0),
+        transform: Matrix4.translationValues(0, _hovering ? -8 : 0, 0),
         child: Card(
-          elevation: _hovering ? 9 : 0,
-          shadowColor: widget.color.withValues(alpha: 0.18),
+          elevation: _hovering ? 10 : 1,
+          shadowColor: widget.color.withValues(alpha: _hovering ? 0.20 : 0.05),
           color: Colors.white,
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(20),
+            borderRadius: BorderRadius.circular(22),
             side: BorderSide(
               color: _hovering
-                  ? widget.color.withValues(alpha: 0.35)
-                  : const Color(0xFFE7EAF2),
+                  ? widget.color.withValues(alpha: 0.40)
+                  : const Color(0xFFE7E3F7),
             ),
           ),
           child: InkWell(
             borderRadius: BorderRadius.circular(20),
             onTap: widget.onTap,
-            child: Padding(
-              padding: const EdgeInsets.all(23),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  AnimatedContainer(
-                    duration: const Duration(milliseconds: 240),
-                    width: 54,
-                    height: 54,
-                    decoration: BoxDecoration(
-                      color: widget.color.withValues(
-                        alpha: _hovering ? 0.18 : 0.10,
-                      ),
-                      borderRadius: BorderRadius.circular(_hovering ? 19 : 15),
-                    ),
-                    child: Icon(widget.icon, color: widget.color, size: 28),
-                  ),
-                  const SizedBox(height: 18),
-                  Text(
-                    widget.title,
-                    style: const TextStyle(
-                      color: navy,
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: 10),
-                  Text(
-                    widget.description,
-                    style: const TextStyle(
-                      color: Colors.black54,
-                      height: 1.7,
-                    ),
-                  ),
-                  if (widget.onTap != null) ...[
-                    const SizedBox(height: 15),
-                    const Row(
-                      children: [
-                        Text(
-                          'Explore',
-                          style: TextStyle(
-                            color: purple,
-                            fontWeight: FontWeight.bold,
-                          ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (widget.imageUrl != null)
+                  ClipRRect(
+                    borderRadius: const BorderRadius.vertical(top: Radius.circular(21)),
+                    child: SizedBox(
+                      height: 150,
+                      width: double.infinity,
+                      child: Image.network(
+                        widget.imageUrl!,
+                        fit: BoxFit.cover,
+                        loadingBuilder: (context, child, progress) => progress == null
+                            ? child
+                            : Container(
+                          color: const Color(0xFFF1E8D2),
+                          alignment: Alignment.center,
+                          child: const CircularProgressIndicator(color: yellow),
                         ),
-                        SizedBox(width: 6),
-                        Icon(Icons.arrow_forward, color: purple, size: 17),
-                      ],
+                        errorBuilder: (context, error, stack) => Container(
+                          color: const Color(0xFF28251F),
+                          alignment: Alignment.center,
+                          child: Icon(widget.icon, color: yellow, size: 48),
+                        ),
+                      ),
                     ),
-                  ],
-                ],
-              ),
+                  ),
+                Padding(
+                  padding: const EdgeInsets.all(22),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      AnimatedContainer(
+                        duration: const Duration(milliseconds: 240),
+                        width: 58,
+                        height: 58,
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                            colors: [
+                              widget.color.withValues(alpha: _hovering ? 0.20 : 0.13),
+                              widget.color.withValues(alpha: _hovering ? 0.09 : 0.04),
+                            ],
+                          ),
+                          borderRadius: BorderRadius.circular(_hovering ? 20 : 16),
+                          border: Border.all(color: widget.color.withValues(alpha: 0.10)),
+                        ),
+                        child: Icon(widget.icon, color: widget.color, size: 29),
+                      ),
+                      const SizedBox(height: 18),
+                      Text(
+                        widget.title,
+                        style: const TextStyle(
+                          color: navy,
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      Text(
+                        widget.description,
+                        style: const TextStyle(
+                          color: Colors.black54,
+                          height: 1.7,
+                        ),
+                      ),
+                      if (widget.onTap != null) ...[
+                        const SizedBox(height: 15),
+                        const Row(
+                          children: [
+                            Text(
+                              'Explore',
+                              style: TextStyle(
+                                color: purple,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            SizedBox(width: 6),
+                            Icon(Icons.arrow_forward, color: purple, size: 17),
+                          ],
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+              ],
             ),
           ),
         ),
       ),
     );
   }
+}
+
+
+String _courseImage(String title) {
+  if (title.toLowerCase().contains('leadership')) {
+    return 'https://images.unsplash.com/photo-1521737711867-e3b97375f902?auto=format&fit=crop&w=900&q=80';
+  }
+  if (title.toLowerCase().contains('digital')) {
+    return 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?auto=format&fit=crop&w=900&q=80';
+  }
+  if (title.toLowerCase().contains('communication')) {
+    return 'https://images.unsplash.com/photo-1552664730-d307ca884978?auto=format&fit=crop&w=900&q=80';
+  }
+  return 'https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?auto=format&fit=crop&w=900&q=80';
 }
 
 class CourseCard extends StatefulWidget {
@@ -4773,17 +5320,17 @@ class _CourseCardState extends State<CourseCard> {
         duration: const Duration(milliseconds: 240),
         curve: Curves.easeOutCubic,
         width: 285,
-        transform: Matrix4.translationValues(0, _hovering ? -7 : 0, 0),
+        transform: Matrix4.translationValues(0, _hovering ? -8 : 0, 0),
         child: Card(
-          elevation: _hovering ? 9 : 0,
-          shadowColor: course.color.withValues(alpha: 0.18),
+          elevation: _hovering ? 10 : 1,
+          shadowColor: course.color.withValues(alpha: _hovering ? 0.20 : 0.05),
           color: Colors.white,
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(20),
+            borderRadius: BorderRadius.circular(22),
             side: BorderSide(
               color: _hovering
                   ? course.color.withValues(alpha: 0.35)
-                  : const Color(0xFFE5E8F0),
+                  : const Color(0xFFE8E0CF),
             ),
           ),
           clipBehavior: Clip.antiAlias,
@@ -4791,14 +5338,82 @@ class _CourseCardState extends State<CourseCard> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               AnimatedContainer(
-                duration: const Duration(milliseconds: 240),
-                height: 130,
+                duration: const Duration(milliseconds: 300),
+                height: 142,
                 width: double.infinity,
-                color: course.color.withValues(alpha: _hovering ? 0.17 : 0.10),
-                child: AnimatedScale(
-                  duration: const Duration(milliseconds: 240),
-                  scale: _hovering ? 1.10 : 1.0,
-                  child: Icon(course.icon, color: course.color, size: 55),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [
+                      course.color.withValues(alpha: _hovering ? 0.22 : 0.15),
+                      course.color.withValues(alpha: _hovering ? 0.10 : 0.05),
+                      const Color(0xFFFBF8F0),
+                    ],
+                  ),
+                ),
+                child: Stack(
+                  fit: StackFit.expand,
+                  alignment: Alignment.center,
+                  children: [
+                    Image.network(
+                      _courseImage(course.title),
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stack) => DecoratedBox(
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: [
+                              course.color.withValues(alpha: 0.22),
+                              const Color(0xFFFBF8F0),
+                            ],
+                          ),
+                        ),
+                        child: Center(
+                          child: Icon(course.icon, color: course.color, size: 58),
+                        ),
+                      ),
+                    ),
+                    DecoratedBox(
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.bottomCenter,
+                          end: Alignment.topCenter,
+                          colors: [
+                            Colors.black.withValues(alpha: 0.45),
+                            Colors.transparent,
+                          ],
+                        ),
+                      ),
+                    ),
+                    Positioned(
+                      right: 15,
+                      top: 12,
+                      child: Icon(
+                        Icons.auto_awesome_rounded,
+                        size: 22,
+                        color: Colors.white.withValues(alpha: 0.9),
+                      ),
+                    ),
+                    Positioned(
+                      left: 14,
+                      bottom: 12,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: Colors.black.withValues(alpha: 0.48),
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: Text(
+                          course.category,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
               Padding(
@@ -4855,12 +5470,14 @@ class ServiceCard extends StatelessWidget {
   final IconData icon;
   final String title;
   final String text;
+  final String? imageUrl;
 
   const ServiceCard({
     super.key,
     required this.icon,
     required this.title,
     required this.text,
+    this.imageUrl,
   });
 
   @override
@@ -4870,6 +5487,7 @@ class ServiceCard extends StatelessWidget {
       title: title,
       description: text,
       color: purple,
+      imageUrl: imageUrl,
     );
   }
 }
@@ -4881,7 +5499,7 @@ class SiteFooter extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       width: double.infinity,
-      color: const Color(0xFF0D1C38),
+      color: const Color(0xFF141414),
       padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 30),
       child: const Column(
         children: [
@@ -5075,7 +5693,7 @@ class _RegisterPageState extends State<RegisterPage> {
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(24),
-            border: Border.all(color: const Color(0xFFE5E8F0)),
+            border: Border.all(color: const Color(0xFFE8E0CF)),
           ),
           child: Form(
             key: formKey,
@@ -5394,36 +6012,42 @@ class InsightsPage extends StatelessWidget {
   static const _articles = <Map<String, String>>[
     {
       'category': 'Emotional Intelligence',
+      'image': 'https://images.unsplash.com/photo-1521737711867-e3b97375f902?auto=format&fit=crop&w=900&q=80',
       'title': 'Building Emotional Intelligence at Work',
       'summary': 'Practical ways to recognise emotions, respond thoughtfully, and strengthen workplace relationships.',
       'read': '5 min read',
     },
     {
       'category': 'Leadership',
+      'image': 'https://images.unsplash.com/photo-1552664730-d307ca884978?auto=format&fit=crop&w=900&q=80',
       'title': 'Leading with Empathy and Clarity',
       'summary': 'Create trust through active listening, clear expectations, and consistent communication.',
       'read': '4 min read',
     },
     {
       'category': 'Mindfulness',
+      'image': 'https://images.unsplash.com/photo-1506126613408-eca07ce68773?auto=format&fit=crop&w=900&q=80',
       'title': 'Small Mindfulness Practices for Busy Teams',
       'summary': 'Simple pauses that can help teams reset attention and approach challenges more intentionally.',
       'read': '3 min read',
     },
     {
       'category': 'Communication',
+      'image': 'https://images.unsplash.com/photo-1556761175-b413da4baf72?auto=format&fit=crop&w=900&q=80',
       'title': 'Making Feedback More Constructive',
       'summary': 'A respectful framework for sharing specific observations and agreeing on next steps.',
       'read': '6 min read',
     },
     {
       'category': 'Workplace Well-being',
+      'image': 'https://images.unsplash.com/photo-1521737604893-d14cc237f11d?auto=format&fit=crop&w=900&q=80',
       'title': 'Creating Space for Team Well-being',
       'summary': 'How regular check-ins and shared norms can support a healthier working environment.',
       'read': '5 min read',
     },
     {
       'category': 'Personal Development',
+      'image': 'https://images.unsplash.com/photo-1517842645767-c639042777db?auto=format&fit=crop&w=900&q=80',
       'title': 'Turn Reflection into Action',
       'summary': 'Use a short reflection routine to identify learning, choose a next step, and review progress.',
       'read': '4 min read',
@@ -5462,22 +6086,40 @@ class InsightsPage extends StatelessWidget {
                           child: Card(
                             elevation: 0,
                             color: Colors.white,
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18), side: const BorderSide(color: Color(0xFFE5E8F0))),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18), side: const BorderSide(color: Color(0xFFE8E0CF))),
                             clipBehavior: Clip.antiAlias,
-                            child: Padding(
-                              padding: const EdgeInsets.all(22),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Container(padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6), decoration: BoxDecoration(color: const Color(0xFFF0EAFE), borderRadius: BorderRadius.circular(20)), child: Text(article['category']!, style: const TextStyle(color: purple, fontSize: 12, fontWeight: FontWeight.bold))),
-                                  const SizedBox(height: 18),
-                                  Text(article['title']!, style: const TextStyle(fontSize: 19, fontWeight: FontWeight.bold, color: navy, height: 1.3)),
-                                  const SizedBox(height: 10),
-                                  Text(article['summary']!, style: const TextStyle(color: Colors.black54, height: 1.55)),
-                                  const SizedBox(height: 18),
-                                  Row(children: [const Icon(Icons.schedule, size: 15, color: purple), const SizedBox(width: 6), Text(article['read']!, style: const TextStyle(color: Colors.black54, fontSize: 12))]),
-                                ],
-                              ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Image.network(
+                                  article['image']!,
+                                  width: double.infinity,
+                                  height: 150,
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (context, error, stackTrace) => Container(
+                                    width: double.infinity,
+                                    height: 150,
+                                    color: const Color(0xFF24211B),
+                                    alignment: Alignment.center,
+                                    child: const Icon(Icons.auto_awesome, size: 42, color: yellow),
+                                  ),
+                                ),
+                                Padding(
+                                  padding: const EdgeInsets.all(22),
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Container(padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6), decoration: BoxDecoration(color: const Color(0xFFF5EAD0), borderRadius: BorderRadius.circular(20)), child: Text(article['category']!, style: const TextStyle(color: purple, fontSize: 12, fontWeight: FontWeight.bold))),
+                                      const SizedBox(height: 18),
+                                      Text(article['title']!, style: const TextStyle(fontSize: 19, fontWeight: FontWeight.bold, color: navy, height: 1.3)),
+                                      const SizedBox(height: 10),
+                                      Text(article['summary']!, style: const TextStyle(color: Colors.black54, height: 1.55)),
+                                      const SizedBox(height: 18),
+                                      Row(children: [const Icon(Icons.schedule, size: 15, color: purple), const SizedBox(width: 6), Text(article['read']!, style: const TextStyle(color: Colors.black54, fontSize: 12))]),
+                                    ],
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
                         )).toList(),
@@ -5599,7 +6241,7 @@ class _ProductManagementPageState extends State<ProductManagementPage> {
                 margin: const EdgeInsets.only(bottom: 10),
                 child: ListTile(
                   leading: CircleAvatar(
-                    backgroundColor: const Color(0xFFF0ECFA),
+                    backgroundColor: const Color(0xFFF4E9CC),
                     child: Icon(
                       d['type'] == 'Physical'
                           ? Icons.inventory_2_outlined
@@ -5811,7 +6453,7 @@ class _ContactPageState extends State<ContactPage> {
             child: Container(
               constraints: const BoxConstraints(maxWidth: 760),
               padding: const EdgeInsets.all(28),
-              decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(22), border: Border.all(color: const Color(0xFFE5E8F0))),
+              decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(22), border: Border.all(color: const Color(0xFFE8E0CF))),
               child: Form(
                 key: formKey,
                 child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
