@@ -1,17 +1,28 @@
-# mt_alchemy
+# MT Alchemy — Group 10
 
 MT Alchemy Corporate Platform
 
+This repository contains the Flutter project for the MT Alchemy corporate platform, including its website, store, and learning management system (LMS).
+
 ## Getting Started
 
-This project is a starting point for a Flutter application.
+This project is built using Flutter.
 
-A few resources to get you started if this is your first Flutter project:
+To run the project locally:
 
-- [Learn Flutter](https://docs.flutter.dev/get-started/learn-flutter)
-- [Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Flutter learning resources](https://docs.flutter.dev/reference/learning-resources)
+1. Install Flutter and configure your development environment.
+2. Clone this repository.
+3. Run `flutter pub get`.
+4. Start the application using `flutter run`.
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+## Project Structure
+
+- `lib/` — Flutter application source code.
+- `assets/` — Application assets, including media.
+- `web/` — Flutter web platform files.
+- `android/` — Android platform files.
+- `firebase.json` — Firebase project configuration.
+
+## Group
+
+Group 10 — MT Alchemy
