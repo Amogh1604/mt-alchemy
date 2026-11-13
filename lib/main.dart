@@ -269,6 +269,7 @@ class MainWebsite extends StatefulWidget {
 
 class _MainWebsiteState extends State<MainWebsite> {
   String currentPage = 'Home';
+  final List<String> _pageHistory = [];
   String? latestOrderId;
   String? signedInRole;
   String? signedInName;
@@ -300,7 +301,7 @@ class _MainWebsiteState extends State<MainWebsite> {
 
       if (!mounted) return;
 
-      const validRoles = ['Super Admin', 'Individual', 'Employer', 'Trainer'];
+      const validRoles = ['Super Admin', 'Individual', 'Employer', 'Trainer', 'Employee'];
       if (!profile.exists || !validRoles.contains(role) || status == 'Suspended') {
         await FirebaseAuth.instance.signOut();
         if (!mounted) return;
@@ -308,6 +309,7 @@ class _MainWebsiteState extends State<MainWebsite> {
           signedInRole = null;
           signedInName = null;
           currentPage = 'Home';
+          _pageHistory.clear();
           _isRestoringSession = false;
         });
         return;
@@ -334,12 +336,27 @@ class _MainWebsiteState extends State<MainWebsite> {
       case 'Individual': return 'Individual Dashboard';
       case 'Employer': return 'Employer Dashboard';
       case 'Trainer': return 'Trainer Dashboard';
+      case 'Employee': return 'Employee Dashboard';
       default: return 'Home';
     }
   }
 
   void navigate(String page) {
-    setState(() => currentPage = page);
+    if (page == currentPage) return;
+    setState(() {
+      _pageHistory.add(currentPage);
+      currentPage = page;
+    });
+  }
+
+  void goBack() {
+    setState(() {
+      if (_pageHistory.isNotEmpty) {
+        currentPage = _pageHistory.removeLast();
+      } else {
+        currentPage = 'Home';
+      }
+    });
   }
 
   // Persist the signed-in user's cart in Firestore. Guest cart remains in memory
@@ -434,6 +451,9 @@ class _MainWebsiteState extends State<MainWebsite> {
         case 'Trainer':
           navigate('Trainer Dashboard');
           break;
+        case 'Employee':
+          navigate('Employee Dashboard');
+          break;
         default:
           await FirebaseAuth.instance.signOut();
           setState(() { signedInRole = null; signedInName = null; });
@@ -459,6 +479,7 @@ class _MainWebsiteState extends State<MainWebsite> {
       case 'Employer': return 'Employer Dashboard';
       case 'Trainer': return 'Trainer Dashboard';
       case 'Individual': return 'Individual Dashboard';
+      case 'Employee': return 'Employee Dashboard';
       default: return 'Home';
     }
   }
@@ -482,6 +503,7 @@ class _MainWebsiteState extends State<MainWebsite> {
       'Home': HomePage(
         onNavigate: navigate,
       ),
+      'Employer Home': EmployerLandingPage(onNavigate: navigate),
       'About Us': AboutPage(),
       'Services': ServicesPage(
         onNavigate: navigate,
@@ -560,6 +582,7 @@ class _MainWebsiteState extends State<MainWebsite> {
       'Individual Dashboard': const RoleDashboardPage(role: 'Individual'),
       'Employer Dashboard': const RoleDashboardPage(role: 'Employer'),
       'Trainer Dashboard': const RoleDashboardPage(role: 'Trainer'),
+      'Employee Dashboard': const RoleDashboardPage(role: 'Employee'),
       'Contact': const ContactPage(),
     };
 
@@ -600,6 +623,16 @@ class _MainWebsiteState extends State<MainWebsite> {
           ),
         ),
         actions: [
+          if (currentPage != 'Home')
+            Padding(
+              padding: const EdgeInsets.only(left: 6, right: 4),
+              child: TextButton.icon(
+                onPressed: goBack,
+                icon: const Icon(Icons.arrow_back_rounded, size: 18),
+                label: const Text('Back'),
+                style: TextButton.styleFrom(foregroundColor: navy),
+              ),
+            ),
           if (MediaQuery.sizeOf(context).width > 850)
             ...[
               'Home',
@@ -607,11 +640,8 @@ class _MainWebsiteState extends State<MainWebsite> {
               'Services',
               'Learning Hub',
               'Insights',
-              'Verify Certificate',
-              'My Orders',
-              'My Digital Products',
               'Digital Store',
-              'Contact',
+              'For Corporates',
             ].map(
                   (page) => TextButton(
                 style: TextButton.styleFrom(
@@ -619,7 +649,9 @@ class _MainWebsiteState extends State<MainWebsite> {
                   minimumSize: Size.zero,
                   tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                 ),
-                onPressed: () => navigate(page),
+                onPressed: () => navigate(
+                  page == 'For Corporates' ? 'Employer Home' : page,
+                ),
                 child: Text(
                   page,
                   maxLines: 1,
@@ -680,14 +712,22 @@ class _MainWebsiteState extends State<MainWebsite> {
             )
           else
             Padding(
-              padding: const EdgeInsets.only(right: 20, left: 4),
+              padding: const EdgeInsets.only(right: 6, left: 4),
+              child: OutlinedButton(
+                onPressed: () => navigate('Login'),
+                child: const Text('Sign In'),
+              ),
+            ),
+          if (FirebaseAuth.instance.currentUser == null && !_isRestoringSession)
+            Padding(
+              padding: const EdgeInsets.only(right: 16, left: 4),
               child: FilledButton(
                 style: FilledButton.styleFrom(
                   backgroundColor: navy,
                   foregroundColor: Colors.white,
                 ),
-                onPressed: () => navigate('Login'),
-                child: const Text('Sign in'),
+                onPressed: () => navigate('Register'),
+                child: const Text('Register'),
               ),
             ),
         ],
@@ -721,13 +761,14 @@ class _MainWebsiteState extends State<MainWebsite> {
                 'Services',
                 'Learning Hub',
                 'Insights',
-                'Verify Certificate',
-                'My Orders',
-                'My Digital Products',
                 'Digital Store',
+                'For Corporates',
                 'Cart',
-                'Contact',
-                if (FirebaseAuth.instance.currentUser != null && signedInRole != null) 'Dashboard' else 'Login',
+                if (FirebaseAuth.instance.currentUser != null && signedInRole != null) 'Verify Certificate',
+                if (FirebaseAuth.instance.currentUser != null && signedInRole != null) 'My Orders',
+                if (FirebaseAuth.instance.currentUser != null && signedInRole != null) 'My Digital Products',
+                if (FirebaseAuth.instance.currentUser != null && signedInRole != null) 'Dashboard' else 'Sign In',
+                if (FirebaseAuth.instance.currentUser == null && !_isRestoringSession) 'Register',
                 if (FirebaseAuth.instance.currentUser != null && signedInRole != null) 'Sign out',
               ])
                 ListTile(
@@ -740,6 +781,10 @@ class _MainWebsiteState extends State<MainWebsite> {
                       navigate(dashboardPage);
                     } else if (page == 'Sign out') {
                       await signOutFromWebsite();
+                    } else if (page == 'For Corporates') {
+                      navigate('Employer Home');
+                    } else if (page == 'Sign In') {
+                      navigate('Login');
                     } else {
                       navigate(page);
                     }
@@ -750,28 +795,75 @@ class _MainWebsiteState extends State<MainWebsite> {
         ),
       )
           : null,
-      body: AnimatedSwitcher(
-        duration: const Duration(milliseconds: 350),
-        switchInCurve: Curves.easeOutCubic,
-        switchOutCurve: Curves.easeInCubic,
-        transitionBuilder: (child, animation) {
-          final slide = Tween<Offset>(
-            begin: const Offset(0.025, 0),
-            end: Offset.zero,
-          ).animate(animation);
+      body: Column(
+        children: [
+          Expanded(
+            child: AnimatedSwitcher(
+              duration: const Duration(milliseconds: 350),
+              switchInCurve: Curves.easeOutCubic,
+              switchOutCurve: Curves.easeInCubic,
+              transitionBuilder: (child, animation) {
+                final slide = Tween<Offset>(
+                  begin: const Offset(0.025, 0),
+                  end: Offset.zero,
+                ).animate(animation);
 
-          return FadeTransition(
-            opacity: animation,
-            child: SlideTransition(
-              position: slide,
-              child: child,
+                return FadeTransition(
+                  opacity: animation,
+                  child: SlideTransition(
+                    position: slide,
+                    child: child,
+                  ),
+                );
+              },
+              child: KeyedSubtree(
+                key: ValueKey(currentPage),
+                child: pages[currentPage] ?? pages['Home']!,
+              ),
             ),
-          );
-        },
-        child: KeyedSubtree(
-          key: ValueKey(currentPage),
-          child: pages[currentPage] ?? pages['Home']!,
-        ),
+          ),
+          if (FirebaseAuth.instance.currentUser == null &&
+              !_isRestoringSession &&
+              !['Login', 'Register'].contains(currentPage))
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+              decoration: const BoxDecoration(
+                color: Color(0xFFF7F4EE),
+                border: Border(top: BorderSide(color: Color(0xFFE8E0CF))),
+              ),
+              child: Wrap(
+                alignment: WrapAlignment.spaceBetween,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                spacing: 16,
+                runSpacing: 8,
+                children: [
+                  const Text(
+                    '© MT Alchemy | Learn • Grow • Transform',
+                    style: TextStyle(color: navy, fontSize: 12),
+                  ),
+                  Wrap(
+                    spacing: 16,
+                    children: [
+                      TextButton(
+                        onPressed: () => navigate('Contact'),
+                        child: const Text('Contact'),
+                      ),
+                      TextButton(
+                        onPressed: () => navigate('Verify Certificate'),
+                        child: const Text('Verify Certificate'),
+                      ),
+                      TextButton.icon(
+                        onPressed: () => navigate('Login'),
+                        icon: const Icon(Icons.lock_outline, size: 16),
+                        label: const Text('Staff Login'),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+        ],
       ),
     );
   }
@@ -803,6 +895,192 @@ class _MainWebsiteState extends State<MainWebsite> {
       default:
         return Icons.login;
     }
+  }
+}
+
+// -------------------- EMPLOYER LANDING PAGE --------------------
+
+class EmployerLandingPage extends StatelessWidget {
+  final ValueChanged<String> onNavigate;
+
+  const EmployerLandingPage({super.key, required this.onNavigate});
+
+  @override
+  Widget build(BuildContext context) {
+    final width = MediaQuery.sizeOf(context).width;
+    final horizontal = width < 600 ? 22.0 : 64.0;
+    final challenges = [
+      ('Employee burnout', Icons.battery_alert_outlined),
+      ('Rising workplace stress', Icons.psychology_alt_outlined),
+      ('Communication gaps', Icons.forum_outlined),
+      ('Team conflicts', Icons.groups_2_outlined),
+      ('Leadership gaps', Icons.leaderboard_outlined),
+      ('Low employee engagement', Icons.sentiment_dissatisfied_outlined),
+    ];
+    final solutions = [
+      ('Leadership Development', 'Build confident, emotionally intelligent leaders.', Icons.workspace_premium_outlined),
+      ('Emotional Intelligence', 'Strengthen self-awareness, empathy and relationships.', Icons.psychology_outlined),
+      ('Team Effectiveness', 'Create connected teams that work better together.', Icons.groups_outlined),
+      ('Communication', 'Improve collaboration and meaningful conversations.', Icons.record_voice_over_outlined),
+      ('Workplace Well-being', 'Support healthier and more resilient workplace cultures.', Icons.favorite_border_rounded),
+      ('CSR & ESG', 'Connect people development with responsible impact.', Icons.eco_outlined),
+    ];
+
+    return SingleChildScrollView(
+      child: Column(
+        children: [
+          Container(
+            width: double.infinity,
+            padding: EdgeInsets.symmetric(horizontal: horizontal, vertical: width < 600 ? 54 : 82),
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                colors: [Color(0xFF151515), Color(0xFF30291C), Color(0xFF6E5425)],
+                begin: Alignment.centerLeft,
+                end: Alignment.centerRight,
+              ),
+            ),
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 1250),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: .10),
+                      borderRadius: BorderRadius.circular(30),
+                      border: Border.all(color: yellow.withValues(alpha: .55)),
+                    ),
+                    child: const Text('CORPORATE LEARNING & DEVELOPMENT', style: TextStyle(color: yellow, fontSize: 11, fontWeight: FontWeight.bold, letterSpacing: 1.2)),
+                  ),
+                  const SizedBox(height: 24),
+                  Text(
+                    'Build emotionally intelligent leaders and resilient workplace cultures.',
+                    style: TextStyle(color: Colors.white, fontSize: width < 600 ? 34 : 48, height: 1.15, fontWeight: FontWeight.w900),
+                  ),
+                  const SizedBox(height: 18),
+                  const SizedBox(
+                    width: 720,
+                    child: Text(
+                      'Develop your people. Strengthen your organisation. MT Alchemy works with organisations to support leadership, team effectiveness and workplace well-being through people-centred learning experiences.',
+                      style: TextStyle(color: Color(0xFFE9E3D7), height: 1.8, fontSize: 15),
+                    ),
+                  ),
+                  const SizedBox(height: 28),
+                  Wrap(spacing: 12, runSpacing: 12, children: [
+                    FilledButton.icon(
+                      style: FilledButton.styleFrom(backgroundColor: yellow, foregroundColor: navy, padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 17)),
+                      onPressed: () => onNavigate('Contact'),
+                      icon: const Icon(Icons.chat_bubble_outline),
+                      label: const Text('Talk to MT Alchemy'),
+                    ),
+                    OutlinedButton.icon(
+                      style: OutlinedButton.styleFrom(foregroundColor: Colors.white, side: const BorderSide(color: Colors.white70), padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 17)),
+                      onPressed: () => onNavigate('Services'),
+                      icon: const Icon(Icons.explore_outlined),
+                      label: const Text('Explore Services'),
+                    ),
+                  ]),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 48),
+          SectionHeading(
+            eyebrow: 'UNDERSTANDING YOUR WORKPLACE',
+            title: 'Challenges organisations face',
+            subtitle: 'People and workplace challenges can affect performance, engagement and culture.',
+          ),
+          const SizedBox(height: 24),
+          Padding(
+            padding: EdgeInsets.symmetric(horizontal: horizontal),
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 1250),
+              child: Wrap(
+                spacing: 16,
+                runSpacing: 16,
+                children: challenges.map((item) => SizedBox(
+                  width: width < 600 ? width - 44 : 285,
+                  child: Card(
+                    child: Padding(
+                      padding: const EdgeInsets.all(20),
+                      child: Row(children: [
+                        Icon(item.$2, color: purple, size: 26),
+                        const SizedBox(width: 12),
+                        Expanded(child: Text(item.$1, style: const TextStyle(fontWeight: FontWeight.w700, color: navy))),
+                      ]),
+                    ),
+                  ),
+                )).toList(),
+              ),
+            ),
+          ),
+          const SizedBox(height: 54),
+          SectionHeading(
+            eyebrow: 'HOW WE CAN HELP',
+            title: 'People development solutions',
+            subtitle: 'Programmes can be shaped around your organisation, people and learning goals.',
+          ),
+          const SizedBox(height: 24),
+          Padding(
+            padding: EdgeInsets.symmetric(horizontal: horizontal),
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 1250),
+              child: Wrap(
+                spacing: 18,
+                runSpacing: 18,
+                children: solutions.map((item) => SizedBox(
+                  width: width < 600 ? width - 44 : 390,
+                  child: Card(
+                    child: Padding(
+                      padding: const EdgeInsets.all(24),
+                      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                        Icon(item.$3, color: purple, size: 32),
+                        const SizedBox(height: 14),
+                        Text(item.$1, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: navy)),
+                        const SizedBox(height: 8),
+                        Text(item.$2, style: const TextStyle(color: Color(0xFF625D53), height: 1.6)),
+                      ]),
+                    ),
+                  ),
+                )).toList(),
+              ),
+            ),
+          ),
+          const SizedBox(height: 48),
+          Padding(
+            padding: EdgeInsets.symmetric(horizontal: horizontal),
+            child: Container(
+              constraints: const BoxConstraints(maxWidth: 1250),
+              width: double.infinity,
+              padding: const EdgeInsets.all(28),
+              decoration: BoxDecoration(color: const Color(0xFF201F1C), borderRadius: BorderRadius.circular(24)),
+              child: Wrap(
+                alignment: WrapAlignment.spaceBetween,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                spacing: 20,
+                runSpacing: 18,
+                children: [
+                  const SizedBox(width: 620, child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    Text('LET’S WORK TOGETHER', style: TextStyle(color: yellow, fontSize: 11, fontWeight: FontWeight.bold, letterSpacing: 1.5)),
+                    SizedBox(height: 10),
+                    Text('Let’s build a thriving workplace together.', style: TextStyle(color: Colors.white, fontSize: 25, fontWeight: FontWeight.w800)),
+                    SizedBox(height: 8),
+                    Text('Tell us about your organisation and the outcomes you want to achieve.', style: TextStyle(color: Color(0xFFD7D1C5), height: 1.6)),
+                  ])),
+                  FilledButton(
+                    style: FilledButton.styleFrom(backgroundColor: yellow, foregroundColor: navy, padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 17)),
+                    onPressed: () => onNavigate('Contact'),
+                    child: const Text('Get a Free Consultation'),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 48),
+        ],
+      ),
+    );
   }
 }
 
@@ -1052,8 +1330,21 @@ class HomePage extends StatelessWidget {
                                       vertical: 18,
                                     ),
                                   ),
-                                  onPressed: () => onNavigate('Contact'),
-                                  child: const Text('Contact Us'),
+                                  onPressed: () => onNavigate('Employer Home'),
+                                  child: const Text('For Corporates'),
+                                ),
+                                OutlinedButton.icon(
+                                  style: OutlinedButton.styleFrom(
+                                    foregroundColor: Colors.white,
+                                    side: BorderSide(color: yellow.withValues(alpha: .8)),
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 20,
+                                      vertical: 18,
+                                    ),
+                                  ),
+                                  onPressed: () => onNavigate('Employer Home'),
+                                  icon: const Icon(Icons.business_outlined, size: 18),
+                                  label: const Text('I’m an Employer'),
                                 ),
                               ],
                             ),
@@ -1423,102 +1714,230 @@ class _LearningVideoSectionState extends State<LearningVideoSection> {
 class AboutPage extends StatelessWidget {
   AboutPage({super.key});
 
-  final List<Map<String, dynamic>> values = [
-    {
-      'icon': Icons.lightbulb_outline,
-      'title': 'Innovation',
-      'text': 'Encouraging new ideas and continuous improvement.',
-      'imageUrl': 'https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?auto=format&fit=crop&w=900&q=85',
-    },
-    {
-      'icon': Icons.handshake_outlined,
-      'title': 'Collaboration',
-      'text': 'Supporting people and organisations to grow together.',
-      'imageUrl': 'https://images.unsplash.com/photo-1521737711867-e3b97375f902?auto=format&fit=crop&w=900&q=85',
-    },
-    {
-      'icon': Icons.trending_up,
-      'title': 'Growth',
-      'text': 'Building skills and creating meaningful learning outcomes.',
-      'imageUrl': 'https://images.unsplash.com/photo-1552664730-d307ca884978?auto=format&fit=crop&w=900&q=85',
-    },
-  ];
+  static const Color _gold = Color(0xFFE0B85F);
+  static const Color _ink = Color(0xFF20201E);
+  static const Color _cream = Color(0xFFF7F3EA);
+  static const Color _muted = Color(0xFF68645D);
+
+  Widget _eyebrow(String text, {Color color = _gold}) => Row(
+    mainAxisSize: MainAxisSize.min,
+    children: [
+      Container(width: 22, height: 2, color: color),
+      const SizedBox(width: 9),
+      Text(text.toUpperCase(), style: TextStyle(color: color, fontSize: 11, fontWeight: FontWeight.w800, letterSpacing: 1.7)),
+    ],
+  );
+
+  Widget _heading(String eyebrow, String title, String subtitle, {bool centered = false}) => Column(
+    crossAxisAlignment: centered ? CrossAxisAlignment.center : CrossAxisAlignment.start,
+    children: [
+      _eyebrow(eyebrow),
+      const SizedBox(height: 12),
+      Text(title, textAlign: centered ? TextAlign.center : TextAlign.left,
+          style: const TextStyle(color: navy, fontSize: 30, height: 1.15, fontWeight: FontWeight.w800)),
+      const SizedBox(height: 10),
+      ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 720),
+        child: Text(subtitle, textAlign: centered ? TextAlign.center : TextAlign.left,
+            style: const TextStyle(color: _muted, fontSize: 14, height: 1.8)),
+      ),
+    ],
+  );
+
+  Widget _valueCard(IconData icon, String number, String title, String body) => Container(
+    width: 250,
+    padding: const EdgeInsets.all(22),
+    decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: const Color(0xFFECE5D8)),
+        boxShadow: const [BoxShadow(color: Color(0x0A17130D), blurRadius: 22, offset: Offset(0, 9))]),
+    child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      Container(width: 48, height: 48, decoration: BoxDecoration(color: _cream, borderRadius: BorderRadius.circular(15)),
+          child: Icon(icon, color: const Color(0xFF9A762B), size: 24)),
+      const SizedBox(height: 18),
+      Text(number, style: const TextStyle(color: Color(0xFF9A762B), fontSize: 11, fontWeight: FontWeight.w800, letterSpacing: 1.4)),
+      const SizedBox(height: 6),
+      Text(title, style: const TextStyle(color: navy, fontSize: 18, fontWeight: FontWeight.bold)),
+      const SizedBox(height: 8),
+      Text(body, style: const TextStyle(color: _muted, height: 1.65, fontSize: 13)),
+    ]),
+  );
+
+  Widget _serviceTile(IconData icon, String title, String description) => Container(
+    width: 300,
+    padding: const EdgeInsets.all(20),
+    decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: const Color(0xFFEAE3D7))),
+    child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      Container(width: 42, height: 42, decoration: BoxDecoration(color: _cream, borderRadius: BorderRadius.circular(13)),
+          child: Icon(icon, color: const Color(0xFF9A762B), size: 21)),
+      const SizedBox(width: 13),
+      Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Text(title, style: const TextStyle(color: navy, fontWeight: FontWeight.bold, fontSize: 14)),
+        const SizedBox(height: 6),
+        Text(description, style: const TextStyle(color: _muted, fontSize: 12, height: 1.6)),
+      ])),
+    ]),
+  );
 
   @override
   Widget build(BuildContext context) {
+    final width = MediaQuery.of(context).size.width;
+    final compact = width < 760;
     return SingleChildScrollView(
-      child: Column(
-        children: [
-          PageBanner(
-            title: 'About MT Alchemy',
-            subtitle:
-            'Supporting learning, professional development and organisational growth.',
+      child: Column(children: [
+        // Editorial-style hero
+        Container(
+          width: double.infinity,
+          padding: EdgeInsets.symmetric(horizontal: compact ? 24 : 70, vertical: compact ? 48 : 72),
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight,
+                colors: [Color(0xFF142C50), Color(0xFF354D83), Color(0xFF6954A5)]),
           ),
-          const SizedBox(height: 42),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 28),
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 1000),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'Learning with purpose',
-                    style: TextStyle(
-                      color: navy,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 29,
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  const Text(
-                    'MT Alchemy is presented here as a corporate learning '
-                        'and development platform. The website brings learning '
-                        'resources, training services and digital products into '
-                        'one accessible experience for individuals and organisations.',
-                    style: TextStyle(height: 1.9, fontSize: 16),
-                  ),
-                  const SizedBox(height: 35),
-                  Wrap(
-                    spacing: 18,
-                    runSpacing: 18,
-                    children: values.map((value) {
-                      return FeatureCard(
-                        icon: value['icon'] as IconData,
-                        title: value['title'] as String,
-                        description: value['text'] as String,
-                        color: purple,
-                        imageUrl: value['imageUrl'] as String,
-                      );
-                    }).toList(),
-                  ),
-                  const SizedBox(height: 35),
-                  const Text(
-                    'Our goal',
-                    style: TextStyle(
-                      color: navy,
-                      fontSize: 25,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
+          child: Stack(children: [
+            Positioned(right: -20, top: -45, child: Container(width: 190, height: 190,
+                decoration: BoxDecoration(shape: BoxShape.circle, border: Border.all(color: Colors.white.withOpacity(.10), width: 26)))),
+            Positioned(left: 0, bottom: 0, child: Icon(Icons.auto_awesome, color: _gold.withOpacity(.25), size: 70)),
+            Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              _eyebrow('The people behind the progress'),
+              const SizedBox(height: 20),
+              ConstrainedBox(constraints: const BoxConstraints(maxWidth: 760), child: Text(
+                  'We help people grow,\nand workplaces thrive.',
+                  style: TextStyle(color: Colors.white, fontSize: compact ? 34 : 52, height: 1.08, fontWeight: FontWeight.w800, letterSpacing: -1.1))),
+              const SizedBox(height: 18),
+              SizedBox(width: 650, child: Text(
+                  'MT Alchemy is a people-development consultancy supporting individuals, teams and organisations through human-centred learning and development.',
+                  style: TextStyle(color: Colors.white.withOpacity(.86), fontSize: 15, height: 1.8))),
+              const SizedBox(height: 25),
+              Wrap(spacing: 10, runSpacing: 10, children: [
+                _heroTag(Icons.psychology_alt_outlined, 'Emotional intelligence'),
+                _heroTag(Icons.groups_2_outlined, 'Connected teams'),
+                _heroTag(Icons.trending_up, 'Meaningful growth'),
+              ]),
+            ]),
+          ]),
+        ),
+        const SizedBox(height: 58),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 24),
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 1120),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              // Who we are feature split
+              _heading('Who we are', 'People development with purpose',
+                  'We bring learning, coaching and practical development experiences together to help people build self-awareness, strengthen relationships and create positive change.'),
+              const SizedBox(height: 25),
+              LayoutBuilder(builder: (context, constraints) {
+                final image = ClipRRect(borderRadius: BorderRadius.circular(24), child: Image.network(
+                    'https://images.unsplash.com/photo-1521737711867-e3b97375f902?auto=format&fit=crop&w=1200&q=85',
+                    height: compact ? 220 : 330, width: double.infinity, fit: BoxFit.cover,
+                    errorBuilder: (_, __, ___) => Container(height: 260, color: const Color(0xFFE9E2D5), child: const Icon(Icons.groups_rounded, size: 70, color: navy))));
+                final story = Container(padding: EdgeInsets.all(compact ? 22 : 32), decoration: BoxDecoration(
+                    color: _cream, borderRadius: BorderRadius.circular(24)), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  _eyebrow('Our belief', color: const Color(0xFF9A762B)),
+                  const SizedBox(height: 14),
+                  const Text('Real growth starts with people.', style: TextStyle(color: navy, fontWeight: FontWeight.w800, fontSize: 25, height: 1.2)),
                   const SizedBox(height: 12),
-                  const Text(
-                    'Provide a central place to explore courses, access '
-                        'resources and discover training opportunities. '
-                        'Organisation-specific information can be added from '
-                        'the official company profile.',
-                    style: TextStyle(height: 1.8, fontSize: 15),
-                  ),
-                ],
-              ),
-            ),
+                  const Text('We believe stronger workplaces are built when people understand themselves, communicate with empathy and work together with purpose.', style: TextStyle(color: _muted, height: 1.8, fontSize: 14)),
+                  const SizedBox(height: 18),
+                  const Row(children: [Icon(Icons.check_circle, color: Color(0xFF9A762B), size: 18), SizedBox(width: 8), Expanded(child: Text('A human-centred approach', style: TextStyle(color: navy, fontWeight: FontWeight.w600))) ]),
+                  const SizedBox(height: 9),
+                  const Row(children: [Icon(Icons.check_circle, color: Color(0xFF9A762B), size: 18), SizedBox(width: 8), Expanded(child: Text('Learning that can be applied in real life', style: TextStyle(color: navy, fontWeight: FontWeight.w600))) ]),
+                ]));
+                return constraints.maxWidth < 760
+                    ? Column(children: [image, const SizedBox(height: 16), story])
+                    : Row(crossAxisAlignment: CrossAxisAlignment.start, children: [Expanded(flex: 11, child: image), const SizedBox(width: 22), Expanded(flex: 9, child: story)]);
+              }),
+              const SizedBox(height: 58),
+              _heading('What guides us', 'Our vision, mission & approach',
+                  'The principles that shape how we work with individuals, teams and organisations.'),
+              const SizedBox(height: 24),
+              Wrap(spacing: 16, runSpacing: 16, children: [
+                _valueCard(Icons.visibility_outlined, '01', 'Our Vision', 'To help create emotionally intelligent people, connected teams and thriving workplace cultures.'),
+                _valueCard(Icons.flag_outlined, '02', 'Our Mission', 'To support meaningful personal and organisational growth through learning, coaching and practical development experiences.'),
+                _valueCard(Icons.favorite_outline, '03', 'Our Approach', 'A human-centred approach that encourages self-awareness, meaningful connection and positive behaviour change.'),
+              ]),
+              const SizedBox(height: 58),
+              // Services on a tinted panel
+              Container(width: double.infinity, padding: EdgeInsets.all(compact ? 22 : 34),
+                  decoration: BoxDecoration(color: const Color(0xFFF7F3EA), borderRadius: BorderRadius.circular(26)),
+                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    _heading('What we do', 'Development for people and organisations',
+                        'Our work spans key areas that help individuals and workplaces learn, connect and grow.'),
+                    const SizedBox(height: 24),
+                    Wrap(spacing: 13, runSpacing: 13, children: [
+                      _serviceTile(Icons.psychology_outlined, 'Emotional Intelligence & Mindfulness', 'Build self-awareness, empathy and mindful habits.'),
+                      _serviceTile(Icons.record_voice_over_outlined, 'Leadership & Communication', 'Strengthen leadership capability and everyday communication.'),
+                      _serviceTile(Icons.health_and_safety_outlined, 'Organisation Well-being Assessment', 'Understand well-being needs across the workplace.'),
+                      _serviceTile(Icons.groups_outlined, 'Team Engagement & Effectiveness', 'Support collaboration, trust and team connection.'),
+                      _serviceTile(Icons.public_outlined, 'CSR & ESG', 'Connect people development with responsible impact.'),
+                      _serviceTile(Icons.tune_rounded, 'Customised Programmes', 'Shape learning experiences around organisational needs.'),
+                    ]),
+                  ])),
+              const SizedBox(height: 58),
+              // Impact statement
+              Container(width: double.infinity, padding: EdgeInsets.all(compact ? 24 : 38),
+                  decoration: BoxDecoration(gradient: const LinearGradient(colors: [_ink, Color(0xFF34312B)]), borderRadius: BorderRadius.circular(26)),
+                  child: Wrap(alignment: WrapAlignment.spaceBetween, crossAxisAlignment: WrapCrossAlignment.center, spacing: 24, runSpacing: 20, children: [
+                    SizedBox(width: compact ? 280 : 650, child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                      _eyebrow('Our impact'), const SizedBox(height: 13),
+                      const Text('Learning that creates meaningful change.', style: TextStyle(color: Colors.white, fontSize: 27, height: 1.2, fontWeight: FontWeight.w800)),
+                      const SizedBox(height: 10),
+                      const Text('MT Alchemy’s development work is centred on helping people strengthen skills, relationships and workplace culture.', style: TextStyle(color: Colors.white70, height: 1.7, fontSize: 14)),
+                    ])),
+                    Container(padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 22), decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(.07), borderRadius: BorderRadius.circular(20), border: Border.all(color: Colors.white.withOpacity(.12))),
+                        child: const Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                          Text('1,100+', style: TextStyle(color: _gold, fontSize: 42, fontWeight: FontWeight.w900)),
+                          Text('participants impacted', style: TextStyle(color: Colors.white70, fontSize: 13)),
+                        ])),
+                  ])),
+              const SizedBox(height: 58),
+              _heading('Leadership', 'Meet the founder', 'The person guiding MT Alchemy’s people-development vision.'),
+              const SizedBox(height: 22),
+              Container(width: double.infinity, padding: EdgeInsets.all(compact ? 20 : 30),
+                  decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(24), border: Border.all(color: const Color(0xFFEAE3D7)),
+                      boxShadow: const [BoxShadow(color: Color(0x0A17130D), blurRadius: 20, offset: Offset(0, 8))]),
+                  child: Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
+                    Container(width: compact ? 66 : 92, height: compact ? 66 : 92, decoration: const BoxDecoration(shape: BoxShape.circle,
+                        gradient: LinearGradient(colors: [Color(0xFFE9D39A), Color(0xFF9A762B)])),
+                        child: Center(child: Text('MT', style: TextStyle(color: Colors.white, fontSize: compact ? 23 : 30, fontWeight: FontWeight.w800)))),
+                    const SizedBox(width: 20),
+                    const Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                      Text('Mabel Tan KH', style: TextStyle(color: navy, fontSize: 21, fontWeight: FontWeight.w800)),
+                      SizedBox(height: 5),
+                      Text('Founder  •  EQ Coach  •  HRDC Certified Trainer', style: TextStyle(color: Color(0xFF9A762B), fontSize: 13, fontWeight: FontWeight.w700)),
+                      SizedBox(height: 9),
+                      Text('Founder profile and approved biography can be added here when the official company details are available.', style: TextStyle(color: _muted, height: 1.65, fontSize: 13)),
+                    ])),
+                  ])),
+              const SizedBox(height: 45),
+              Container(width: double.infinity, padding: EdgeInsets.all(compact ? 22 : 30), decoration: BoxDecoration(
+                  color: const Color(0xFFEEF0F7), borderRadius: BorderRadius.circular(24)),
+                  child: Row(children: [
+                    const Icon(Icons.diversity_3_outlined, color: Color(0xFF455A86), size: 38),
+                    const SizedBox(width: 18),
+                    const Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                      Text('Our Team', style: TextStyle(color: navy, fontSize: 20, fontWeight: FontWeight.w800)),
+                      SizedBox(height: 6),
+                      Text('A collaborative team supporting learning, professional development and organisational growth. Team member profiles and photographs can be added when approved company information is available.', style: TextStyle(color: _muted, height: 1.65, fontSize: 13)),
+                    ])),
+                  ])),
+              const SizedBox(height: 48),
+            ]),
           ),
-          const SizedBox(height: 45),
-          SiteFooter(),
-        ],
-      ),
+        ),
+        SiteFooter(),
+      ]),
     );
   }
+
+  Widget _heroTag(IconData icon, String label) => Container(
+    padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 9),
+    decoration: BoxDecoration(color: Colors.white.withOpacity(.10), borderRadius: BorderRadius.circular(30),
+        border: Border.all(color: Colors.white.withOpacity(.20))),
+    child: Row(mainAxisSize: MainAxisSize.min, children: [Icon(icon, color: _gold, size: 16), const SizedBox(width: 7),
+      Text(label, style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w600))]),
+  );
 }
 
 // -------------------- SERVICES PAGE --------------------
@@ -3028,7 +3447,7 @@ class _LoginPageState extends State<LoginPage> {
     try {
       final credential = await FirebaseAuth.instance
           .signInWithEmailAndPassword(
-        email: emailController.text.trim(),
+        email: emailController.text.trim().toLowerCase(),
         password: passwordController.text,
       );
 
@@ -3452,7 +3871,7 @@ class _RoleDashboardPageState extends State<RoleDashboardPage> {
     final isAdmin = role == 'Super Admin';
     final user = FirebaseAuth.instance.currentUser;
     final title = isAdmin ? 'Super Admin Dashboard' : '$role Dashboard';
-    const allowedRoles = ['Individual', 'Employer', 'Trainer', 'Super Admin'];
+    const allowedRoles = ['Individual', 'Employer', 'Trainer', 'Employee', 'Super Admin'];
 
     return SingleChildScrollView(
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
@@ -3711,35 +4130,43 @@ class _RoleDashboardPageState extends State<RoleDashboardPage> {
                 ),
                 const SizedBox(height: 20),
                 const _ActivityLogPanel(),
+                const SizedBox(height: 24),
+                const _AdminCoachingRequestsPanel(),
+                const SizedBox(height: 24),
+                const _AdminCorporateEnquiriesPanel(),
                 if (_isUpdatingRole || _isUpdatingStatus) ...[
                   const SizedBox(height: 12),
                   const LinearProgressIndicator(),
                 ],
               ] else if (role == 'Individual')
                 IndividualLearningDashboard(userId: user?.uid)
-              else
-                Wrap(
-                  spacing: 16,
-                  runSpacing: 16,
-                  children: [
-                    _DashboardTile(
-                      icon: Icons.school_outlined,
-                      title: role == 'Trainer' ? 'Training programmes' : 'Learning Hub',
-                      description: role == 'Trainer' ? 'Your training-management area.' : 'Explore learning content.',
+              else if (role == 'Employer')
+                  EmployerWorkspaceDashboard(user: user)
+                else if (role == 'Employee')
+                    EmployeeLearningDashboard(userId: user?.uid)
+                  else
+                    Wrap(
+                      spacing: 16,
+                      runSpacing: 16,
+                      children: [
+                        _DashboardTile(
+                          icon: Icons.school_outlined,
+                          title: role == 'Trainer' ? 'Training programmes' : 'Learning Hub',
+                          description: role == 'Trainer' ? 'Your training-management area.' : 'Explore learning content.',
+                        ),
+                        _DashboardTile(
+                          icon: Icons.person_outline,
+                          title: 'My Profile',
+                          description: 'Signed in as ${user?.email ?? 'your account'}.',
+                        ),
+                        if (role == 'Employer')
+                          const _DashboardTile(
+                            icon: Icons.groups_outlined,
+                            title: 'Team Training',
+                            description: 'Your organisation training area.',
+                          ),
+                      ],
                     ),
-                    _DashboardTile(
-                      icon: Icons.person_outline,
-                      title: 'My Profile',
-                      description: 'Signed in as ${user?.email ?? 'your account'}.',
-                    ),
-                    if (role == 'Employer')
-                      const _DashboardTile(
-                        icon: Icons.groups_outlined,
-                        title: 'Team Training',
-                        description: 'Your organisation training area.',
-                      ),
-                  ],
-                ),
             ],
           ),
         ),
@@ -3753,6 +4180,8 @@ class _RoleDashboardPageState extends State<RoleDashboardPage> {
         return 'Continue your learning journey and manage your profile.';
       case 'Employer':
         return 'Explore team learning and corporate training features.';
+      case 'Employee':
+        return 'Access courses assigned by your organisation and track your learning.';
       case 'Trainer':
         return 'Manage your training workspace and learning programmes.';
       default:
@@ -3761,6 +4190,1512 @@ class _RoleDashboardPageState extends State<RoleDashboardPage> {
   }
 }
 
+
+
+// -------------------- CORPORATE COURSE ASSIGNMENT --------------------
+
+class CorporateCourseAssignmentPanel extends StatefulWidget {
+  final User? user;
+  const CorporateCourseAssignmentPanel({super.key, required this.user});
+
+  @override
+  State<CorporateCourseAssignmentPanel> createState() =>
+      _CorporateCourseAssignmentPanelState();
+}
+
+class _CorporateCourseAssignmentPanelState
+    extends State<CorporateCourseAssignmentPanel> {
+  String? _selectedCourseId;
+  DateTime? _deadline;
+  final Set<String> _selectedEmployees = {};
+  bool _isAssigning = false;
+
+  String _courseId(Course course) => course.title
+      .toLowerCase()
+      .replaceAll(RegExp(r'[^a-z0-9]+'), '_')
+      .replaceAll(RegExp(r'^_|_$'), '');
+
+  Future<void> _pickDeadline() async {
+    final today = DateTime.now();
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: _deadline ?? today.add(const Duration(days: 14)),
+      firstDate: today,
+      lastDate: DateTime(today.year + 3),
+    );
+    if (picked != null && mounted) setState(() => _deadline = picked);
+  }
+
+  Future<void> _assignCourse(List<QueryDocumentSnapshot<Map<String, dynamic>>> employees) async {
+    final employer = widget.user;
+    final course = courses.where((c) => _courseId(c) == _selectedCourseId).firstOrNull;
+    if (employer == null || course == null || _selectedEmployees.isEmpty || _deadline == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Select a course, at least one employee, and a deadline.')),
+      );
+      return;
+    }
+
+    setState(() => _isAssigning = true);
+    try {
+      final batch = FirebaseFirestore.instance.batch();
+      final courseId = _courseId(course);
+      final deadline = Timestamp.fromDate(DateTime(_deadline!.year, _deadline!.month, _deadline!.day, 23, 59, 59));
+      for (final employee in employees.where((e) => _selectedEmployees.contains(e.id))) {
+        final data = employee.data();
+        final ref = FirebaseFirestore.instance.collection('corporate_course_assignments').doc();
+        batch.set(ref, {
+          'assignmentId': ref.id,
+          'courseId': courseId,
+          'courseTitle': course.title,
+          'category': course.category,
+          'description': course.description,
+          'employeeUid': employee.id,
+          'employeeName': (data['name'] ?? 'Employee').toString(),
+          'employeeEmail': (data['email'] ?? '').toString(),
+          'department': (data['department'] ?? '').toString(),
+          'employerUid': employer.uid,
+          'employerEmail': employer.email ?? '',
+          'status': 'Assigned',
+          'progress': 0,
+          'deadline': deadline,
+          'assignedAt': FieldValue.serverTimestamp(),
+          'updatedAt': FieldValue.serverTimestamp(),
+        });
+      }
+      await batch.commit();
+      if (!mounted) return;
+      setState(() => _selectedEmployees.clear());
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('${_selectedEmployees.length == 0 ? 'Course' : 'Course'} assigned successfully to selected employees.')),
+      );
+    } on FirebaseException catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(e.code == 'permission-denied'
+            ? 'Permission denied. Publish the corporate course assignment Firestore rules first.'
+            : 'Could not assign the course (${e.code}).'),
+      ));
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Could not assign the course. Please try again.')),
+      );
+    } finally {
+      if (mounted) setState(() => _isAssigning = false);
+    }
+  }
+
+  String _dateLabel(Timestamp? timestamp) {
+    if (timestamp == null) return 'No deadline';
+    final d = timestamp.toDate();
+    return '${d.day.toString().padLeft(2, '0')}/${d.month.toString().padLeft(2, '0')}/${d.year}';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final employer = widget.user;
+    if (employer == null) return const SizedBox.shrink();
+    return Container(
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: const Color(0xFFE9DFC9)),
+      ),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        const Text('Corporate Course Assignment', style: TextStyle(color: navy, fontSize: 22, fontWeight: FontWeight.bold)),
+        const SizedBox(height: 6),
+        const Text('Choose a programme, select employees, set a deadline and assign the course to your team.', style: TextStyle(color: Colors.black54, height: 1.5)),
+        const SizedBox(height: 18),
+        DropdownButtonFormField<String>(
+          value: _selectedCourseId,
+          decoration: const InputDecoration(labelText: 'Select course', border: OutlineInputBorder(), prefixIcon: Icon(Icons.school_outlined)),
+          items: courses.map((course) => DropdownMenuItem(value: _courseId(course), child: Text(course.title))).toList(),
+          onChanged: (value) => setState(() => _selectedCourseId = value),
+        ),
+        const SizedBox(height: 14),
+        OutlinedButton.icon(
+          onPressed: _pickDeadline,
+          icon: const Icon(Icons.calendar_month_outlined),
+          label: Text(_deadline == null ? 'Choose assignment deadline' : 'Deadline: ${_dateLabel(Timestamp.fromDate(_deadline!))}'),
+        ),
+        const SizedBox(height: 18),
+        const Text('Select employees', style: TextStyle(color: navy, fontWeight: FontWeight.bold, fontSize: 17)),
+        const SizedBox(height: 8),
+        StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+          stream: FirebaseFirestore.instance.collection('users').where('employerUid', isEqualTo: employer.uid).where('role', isEqualTo: 'Employee').snapshots(),
+          builder: (context, snapshot) {
+            if (snapshot.hasError) return const Text('Could not load employees. Check the employee profile read rules.');
+            if (snapshot.connectionState == ConnectionState.waiting) return const Padding(padding: EdgeInsets.all(16), child: Center(child: CircularProgressIndicator()));
+            final employees = snapshot.data?.docs ?? [];
+            if (employees.isEmpty) return const Text('No active employees yet. Invite employees and ask them to register first.');
+            return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+              Align(alignment: Alignment.centerLeft, child: Text('${_selectedEmployees.length} selected', style: const TextStyle(color: purple, fontWeight: FontWeight.w600))),
+              ...employees.map((employee) {
+                final data = employee.data();
+                return CheckboxListTile(
+                  value: _selectedEmployees.contains(employee.id),
+                  onChanged: (checked) => setState(() { if (checked == true) { _selectedEmployees.add(employee.id); } else { _selectedEmployees.remove(employee.id); } }),
+                  controlAffinity: ListTileControlAffinity.leading,
+                  contentPadding: EdgeInsets.zero,
+                  title: Text((data['name'] ?? 'Employee').toString()),
+                  subtitle: Text('${data['email'] ?? ''} • ${data['department'] ?? 'Department not set'}'),
+                );
+              }),
+              const SizedBox(height: 8),
+              Align(alignment: Alignment.centerLeft, child: FilledButton.icon(
+                onPressed: _isAssigning ? null : () => _assignCourse(employees),
+                icon: _isAssigning ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)) : const Icon(Icons.assignment_turned_in_outlined),
+                label: Text(_isAssigning ? 'Assigning...' : 'Assign Course'),
+              )),
+            ]);
+          },
+        ),
+        const Divider(height: 32),
+        const Text('Assignment history', style: TextStyle(color: navy, fontWeight: FontWeight.bold, fontSize: 17)),
+        const SizedBox(height: 8),
+        StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+          stream: FirebaseFirestore.instance.collection('corporate_course_assignments').where('employerUid', isEqualTo: employer.uid).snapshots(),
+          builder: (context, snapshot) {
+            if (snapshot.hasError) return const Text('Could not load assignment history. Check Firestore rules.');
+            if (snapshot.connectionState == ConnectionState.waiting) return const Padding(padding: EdgeInsets.all(12), child: Center(child: CircularProgressIndicator()));
+            final docs = snapshot.data?.docs ?? [];
+            if (docs.isEmpty) return const Text('No courses assigned yet.');
+            return Column(children: docs.map((doc) {
+              final data = doc.data();
+              final progress = ((data['progress'] as num?)?.toInt() ?? 0).clamp(0, 100);
+              return ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: const CircleAvatar(backgroundColor: Color(0xFFF2E8CC), child: Icon(Icons.menu_book_outlined, color: purple)),
+                title: Text((data['courseTitle'] ?? 'Course').toString()),
+                subtitle: Text('${data['employeeName'] ?? 'Employee'} • Due ${_dateLabel(data['deadline'] as Timestamp?)} • $progress%'),
+                trailing: Chip(label: Text((data['status'] ?? 'Assigned').toString())),
+              );
+            }).toList());
+          },
+        ),
+      ]),
+    );
+  }
+}
+
+// -------------------- EMPLOYER WORKSPACE --------------------
+
+class EmployerWorkspaceDashboard extends StatefulWidget {
+  final User? user;
+
+  const EmployerWorkspaceDashboard({super.key, required this.user});
+
+  @override
+  State<EmployerWorkspaceDashboard> createState() =>
+      _EmployerWorkspaceDashboardState();
+}
+
+class _EmployerWorkspaceDashboardState
+    extends State<EmployerWorkspaceDashboard> {
+  final _formKey = GlobalKey<FormState>();
+  final _nameController = TextEditingController();
+  final _emailController = TextEditingController();
+  final _phoneController = TextEditingController();
+  final _organisationController = TextEditingController();
+  final _messageController = TextEditingController();
+
+  String _enquiryType = 'Corporate Training';
+  bool _isSubmitting = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _nameController.text = widget.user?.displayName ?? '';
+    _emailController.text = widget.user?.email ?? '';
+  }
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _emailController.dispose();
+    _phoneController.dispose();
+    _organisationController.dispose();
+    _messageController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _submitTrainingRequest() async {
+    if (!_formKey.currentState!.validate()) return;
+
+    setState(() => _isSubmitting = true);
+    try {
+      await FirebaseFirestore.instance.collection('enquiries').add({
+        'name': _nameController.text.trim(),
+        'email': _emailController.text.trim(),
+        'phone': _phoneController.text.trim(),
+        'organization': _organisationController.text.trim(),
+        'enquiryType': _enquiryType,
+        'message': _messageController.text.trim(),
+        'status': 'New',
+        'createdAt': FieldValue.serverTimestamp(),
+        'source': 'Website Contact Form',
+      });
+
+      if (!mounted) return;
+      _messageController.clear();
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Corporate training request submitted successfully.'),
+          backgroundColor: Colors.green,
+        ),
+      );
+    } on FirebaseException catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            e.code == 'permission-denied'
+                ? 'Permission denied. Please check the Firestore enquiries rules.'
+                : 'Could not submit your request. Please try again.',
+          ),
+        ),
+      );
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Something went wrong. Please try again.'),
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _isSubmitting = false);
+    }
+  }
+
+  InputDecoration _fieldDecoration(String label, IconData icon) {
+    return InputDecoration(
+      labelText: label,
+      prefixIcon: Icon(icon, color: purple),
+      filled: true,
+      fillColor: const Color(0xFFFAF8F2),
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(13),
+        borderSide: const BorderSide(color: Color(0xFFE8E0CF)),
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(13),
+        borderSide: const BorderSide(color: Color(0xFFE8E0CF)),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(13),
+        borderSide: const BorderSide(color: yellow, width: 1.6),
+      ),
+    );
+  }
+
+  Widget _workspaceCard({
+    required IconData icon,
+    required String title,
+    required String description,
+    required String tag,
+  }) {
+    return Container(
+      width: 260,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: const Color(0xFFE9DFC9)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: .035),
+            blurRadius: 16,
+            offset: const Offset(0, 6),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 46,
+            height: 46,
+            decoration: BoxDecoration(
+              color: const Color(0xFFF5F0E5),
+              borderRadius: BorderRadius.circular(13),
+            ),
+            child: Icon(icon, color: purple, size: 24),
+          ),
+          const SizedBox(height: 16),
+          Text(
+            title,
+            style: const TextStyle(
+              color: navy,
+              fontSize: 17,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 7),
+          Text(
+            description,
+            style: const TextStyle(
+              color: Colors.black54,
+              height: 1.5,
+              fontSize: 13,
+            ),
+          ),
+          const SizedBox(height: 14),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF7F3E9),
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Text(
+              tag,
+              style: const TextStyle(
+                color: purple,
+                fontSize: 11,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final userName = widget.user?.displayName?.trim().isNotEmpty == true
+        ? widget.user!.displayName!.trim()
+        : (widget.user?.email?.split('@').first ?? 'Employer');
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(24, 8, 24, 32),
+      child: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 1100),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(30),
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    colors: [Color(0xFF151515), Color(0xFF30291C), Color(0xFF806126)],
+                    begin: Alignment.centerLeft,
+                    end: Alignment.centerRight,
+                  ),
+                  borderRadius: BorderRadius.circular(24),
+                ),
+                child: Wrap(
+                  alignment: WrapAlignment.spaceBetween,
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  spacing: 20,
+                  runSpacing: 18,
+                  children: [
+                    SizedBox(
+                      width: 690,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'EMPLOYER WORKSPACE',
+                            style: TextStyle(
+                              color: yellow,
+                              fontSize: 11,
+                              fontWeight: FontWeight.bold,
+                              letterSpacing: 1.5,
+                            ),
+                          ),
+                          const SizedBox(height: 12),
+                          const Text(
+                            'Develop your people. Strengthen your organisation.',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 27,
+                              height: 1.2,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                          const SizedBox(height: 12),
+                          Text(
+                            'Welcome, $userName. Plan learning and development opportunities for your team with MT Alchemy.',
+                            style: const TextStyle(
+                              color: Colors.white70,
+                              height: 1.6,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const Icon(
+                      Icons.business_center_rounded,
+                      color: yellow,
+                      size: 66,
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 28),
+              const Text(
+                'Your corporate workspace',
+                style: TextStyle(
+                  color: navy,
+                  fontSize: 23,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 7),
+              const Text(
+                'Explore the key areas for managing your organisation’s learning needs.',
+                style: TextStyle(color: Colors.black54, height: 1.5),
+              ),
+              const SizedBox(height: 18),
+              EmployeeManagementPanel(user: widget.user),
+              const SizedBox(height: 24),
+              CorporateCourseAssignmentPanel(user: widget.user),
+              const SizedBox(height: 24),
+              Wrap(
+                spacing: 14,
+                runSpacing: 14,
+                children: [
+                  _workspaceCard(
+                    icon: Icons.groups_2_outlined,
+                    title: 'Team Training',
+                    description:
+                    'Identify skills your employees want to develop and plan suitable learning programmes.',
+                    tag: 'TEAM DEVELOPMENT',
+                  ),
+                  _workspaceCard(
+                    icon: Icons.school_outlined,
+                    title: 'Training Programmes',
+                    description:
+                    'Explore leadership, communication and professional development options.',
+                    tag: 'LEARNING & DEVELOPMENT',
+                  ),
+                  _workspaceCard(
+                    icon: Icons.insights_outlined,
+                    title: 'Training Progress',
+                    description:
+                    'Use this workspace to discuss employee learning goals and future progress reporting.',
+                    tag: 'PROGRESS PLANNING',
+                  ),
+                  _workspaceCard(
+                    icon: Icons.apartment_outlined,
+                    title: 'Company Profile',
+                    description:
+                    'Your account is currently signed in with the employer email shown below.',
+                    tag: 'ACCOUNT DETAILS',
+                  ),
+                ],
+              ),
+              const SizedBox(height: 28),
+              Container(
+                padding: const EdgeInsets.all(24),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: const Color(0xFFE9DFC9)),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Corporate Training Request',
+                      style: TextStyle(
+                        color: navy,
+                        fontSize: 22,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    const Text(
+                      'Tell the MT Alchemy team what your organisation needs. We will use these details to follow up.',
+                      style: TextStyle(color: Colors.black54, height: 1.5),
+                    ),
+                    const SizedBox(height: 20),
+                    Form(
+                      key: _formKey,
+                      child: LayoutBuilder(
+                        builder: (context, constraints) {
+                          final fieldWidth = constraints.maxWidth > 650
+                              ? (constraints.maxWidth - 14) / 2
+                              : constraints.maxWidth;
+                          return Wrap(
+                            spacing: 14,
+                            runSpacing: 14,
+                            children: [
+                              SizedBox(
+                                width: fieldWidth,
+                                child: TextFormField(
+                                  controller: _nameController,
+                                  decoration: _fieldDecoration(
+                                    'Contact name',
+                                    Icons.person_outline,
+                                  ),
+                                  validator: (value) =>
+                                  value == null || value.trim().isEmpty
+                                      ? 'Enter your name'
+                                      : null,
+                                ),
+                              ),
+                              SizedBox(
+                                width: fieldWidth,
+                                child: TextFormField(
+                                  controller: _emailController,
+                                  keyboardType: TextInputType.emailAddress,
+                                  decoration: _fieldDecoration(
+                                    'Email address',
+                                    Icons.email_outlined,
+                                  ),
+                                  validator: (value) {
+                                    final email = value?.trim() ?? '';
+                                    if (!RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$')
+                                        .hasMatch(email)) {
+                                      return 'Enter a valid email';
+                                    }
+                                    return null;
+                                  },
+                                ),
+                              ),
+                              SizedBox(
+                                width: fieldWidth,
+                                child: TextFormField(
+                                  controller: _phoneController,
+                                  keyboardType: TextInputType.phone,
+                                  decoration: _fieldDecoration(
+                                    'Phone number',
+                                    Icons.phone_outlined,
+                                  ),
+                                  validator: (value) =>
+                                  value == null || value.trim().isEmpty
+                                      ? 'Enter your phone number'
+                                      : null,
+                                ),
+                              ),
+                              SizedBox(
+                                width: fieldWidth,
+                                child: TextFormField(
+                                  controller: _organisationController,
+                                  decoration: _fieldDecoration(
+                                    'Organisation',
+                                    Icons.apartment_outlined,
+                                  ),
+                                  validator: (value) =>
+                                  value == null || value.trim().isEmpty
+                                      ? 'Enter your organisation'
+                                      : null,
+                                ),
+                              ),
+                              SizedBox(
+                                width: fieldWidth,
+                                child: DropdownButtonFormField<String>(
+                                  initialValue: _enquiryType,
+                                  decoration: _fieldDecoration(
+                                    'Training requirement',
+                                    Icons.school_outlined,
+                                  ),
+                                  items: const [
+                                    DropdownMenuItem(
+                                      value: 'Corporate Training',
+                                      child: Text('Corporate Training'),
+                                    ),
+                                    DropdownMenuItem(
+                                      value: 'Leadership Development',
+                                      child: Text('Leadership Development'),
+                                    ),
+                                    DropdownMenuItem(
+                                      value: 'Team Development',
+                                      child: Text('Team Development'),
+                                    ),
+                                  ],
+                                  onChanged: (value) {
+                                    if (value != null) {
+                                      setState(() => _enquiryType = value);
+                                    }
+                                  },
+                                ),
+                              ),
+                              SizedBox(
+                                width: constraints.maxWidth,
+                                child: TextFormField(
+                                  controller: _messageController,
+                                  maxLines: 4,
+                                  decoration: _fieldDecoration(
+                                    'Tell us about your team’s training needs',
+                                    Icons.message_outlined,
+                                  ),
+                                  validator: (value) =>
+                                  value == null || value.trim().length < 10
+                                      ? 'Please enter at least 10 characters'
+                                      : null,
+                                ),
+                              ),
+                            ],
+                          );
+                        },
+                      ),
+                    ),
+                    const SizedBox(height: 18),
+                    FilledButton.icon(
+                      onPressed:
+                      _isSubmitting ? null : _submitTrainingRequest,
+                      style: FilledButton.styleFrom(
+                        backgroundColor: navy,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 22,
+                          vertical: 17,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      icon: _isSubmitting
+                          ? const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.white,
+                        ),
+                      )
+                          : const Icon(Icons.send_outlined),
+                      label: Text(
+                        _isSubmitting
+                            ? 'Submitting...'
+                            : 'Submit Training Request',
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 18),
+              Container(
+                padding: const EdgeInsets.all(18),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF2E8CC),
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Icon(Icons.info_outline, color: purple),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        'Invite employees using their work email. They must create their own password and register with the invited email address before appearing as an active team member.',
+                        style: TextStyle(
+                          color: navy.withValues(alpha: .82),
+                          height: 1.5,
+                          fontSize: 13,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+
+
+
+// -------------------- EMPLOYER EMPLOYEE MANAGEMENT --------------------
+
+class EmployeeManagementPanel extends StatefulWidget {
+  final User? user;
+
+  const EmployeeManagementPanel({super.key, required this.user});
+
+  @override
+  State<EmployeeManagementPanel> createState() => _EmployeeManagementPanelState();
+}
+
+class _EmployeeManagementPanelState extends State<EmployeeManagementPanel> {
+  final _formKey = GlobalKey<FormState>();
+  final _nameController = TextEditingController();
+  final _emailController = TextEditingController();
+  final _phoneController = TextEditingController();
+  final _departmentController = TextEditingController();
+  final _organizationController = TextEditingController();
+  bool _isSending = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _organizationController.text = 'MT Alchemy Employer Team';
+    _loadEmployerName();
+  }
+
+  Future<void> _loadEmployerName() async {
+    final uid = widget.user?.uid;
+    if (uid == null) return;
+    try {
+      final profile = await FirebaseFirestore.instance.collection('users').doc(uid).get();
+      final name = (profile.data()?['organizationName'] ?? profile.data()?['name'] ?? '').toString();
+      if (mounted && name.isNotEmpty && _organizationController.text == 'MT Alchemy Employer Team') {
+        setState(() => _organizationController.text = name);
+      }
+    } catch (_) {}
+  }
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _emailController.dispose();
+    _phoneController.dispose();
+    _departmentController.dispose();
+    _organizationController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _sendInvitation() async {
+    if (!_formKey.currentState!.validate()) return;
+    final employer = widget.user;
+    if (employer == null) return;
+
+    final email = _emailController.text.trim().toLowerCase();
+    if (email == (employer.email ?? '').toLowerCase()) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('You cannot invite your own employer email.')),
+      );
+      return;
+    }
+
+    setState(() => _isSending = true);
+    try {
+      final invitationRef = FirebaseFirestore.instance.collection('employee_invitations').doc(email);
+      // Query only this employer's invitations. A direct get() on a missing
+      // document is denied by rules that protect invitations belonging to others.
+      final existingInvitations = await FirebaseFirestore.instance
+          .collection('employee_invitations')
+          .where('emailLower', isEqualTo: email)
+          .where('employerUid', isEqualTo: employer.uid)
+          .limit(1)
+          .get();
+      if (existingInvitations.docs.isNotEmpty) {
+        if (!mounted) return;
+        final existingStatus = (existingInvitations.docs.first.data()['status'] ?? 'Pending').toString();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(existingStatus == 'Accepted'
+                ? 'This email is already linked to an employee account.'
+                : 'An invitation for this email already exists.'),
+          ),
+        );
+        return;
+      }
+      await invitationRef.set({
+        'invitationId': invitationRef.id,
+        'invitedName': _nameController.text.trim(),
+        'email': email,
+        'emailLower': email,
+        'phone': _phoneController.text.trim(),
+        'department': _departmentController.text.trim(),
+        'organizationName': _organizationController.text.trim(),
+        'employerUid': employer.uid,
+        'employerEmail': employer.email ?? '',
+        'status': 'Pending',
+        'createdAt': FieldValue.serverTimestamp(),
+      });
+
+      _nameController.clear();
+      _emailController.clear();
+      _phoneController.clear();
+      _departmentController.clear();
+
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Invitation created. Ask the employee to register using this exact email address.'),
+          duration: Duration(seconds: 5),
+        ),
+      );
+    } on FirebaseException catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(e.code == 'permission-denied'
+              ? 'Permission denied. Publish the employee invitation Firestore rules first.'
+              : 'Could not create invitation (${e.code}).'),
+        ),
+      );
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Could not create the invitation. Please try again.')),
+      );
+    } finally {
+      if (mounted) setState(() => _isSending = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final employer = widget.user;
+    if (employer == null) return const SizedBox.shrink();
+
+    return Container(
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: const Color(0xFFE9DFC9)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const Text('Employee Management',
+              style: TextStyle(color: navy, fontSize: 22, fontWeight: FontWeight.bold)),
+          const SizedBox(height: 6),
+          const Text(
+            'Invite employees to join your organisation. Employees create and manage their own passwords.',
+            style: TextStyle(color: Colors.black54, height: 1.5),
+          ),
+          const SizedBox(height: 18),
+          Form(
+            key: _formKey,
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final width = constraints.maxWidth > 650
+                    ? (constraints.maxWidth - 14) / 2
+                    : constraints.maxWidth;
+                Widget field(TextEditingController controller, String label,
+                    IconData icon, {TextInputType keyboardType = TextInputType.text}) {
+                  return SizedBox(
+                    width: width,
+                    child: TextFormField(
+                      controller: controller,
+                      keyboardType: keyboardType,
+                      decoration: InputDecoration(
+                        labelText: label,
+                        prefixIcon: Icon(icon, color: purple),
+                      ),
+                      validator: (value) => value == null || value.trim().isEmpty
+                          ? 'Enter $label'
+                          : null,
+                    ),
+                  );
+                }
+
+                return Wrap(
+                  spacing: 14,
+                  runSpacing: 14,
+                  children: [
+                    field(_nameController, 'Employee name', Icons.person_outline),
+                    field(_emailController, 'Employee email', Icons.email_outlined,
+                        keyboardType: TextInputType.emailAddress),
+                    field(_phoneController, 'Phone number', Icons.phone_outlined,
+                        keyboardType: TextInputType.phone),
+                    field(_departmentController, 'Department', Icons.business_outlined),
+                    field(_organizationController, 'Organisation name', Icons.apartment_outlined),
+                  ],
+                );
+              },
+            ),
+          ),
+          const SizedBox(height: 16),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: FilledButton.icon(
+              onPressed: _isSending ? null : _sendInvitation,
+              icon: _isSending
+                  ? const SizedBox(width: 18, height: 18,
+                  child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                  : const Icon(Icons.mail_outline),
+              label: Text(_isSending ? 'Creating invitation...' : 'Create Employee Invitation'),
+            ),
+          ),
+          const SizedBox(height: 22),
+          const Divider(),
+          const SizedBox(height: 12),
+          const Text('Invitations',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: navy)),
+          const SizedBox(height: 10),
+          StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+            stream: FirebaseFirestore.instance
+                .collection('employee_invitations')
+                .where('employerUid', isEqualTo: employer.uid)
+                .snapshots(),
+            builder: (context, snapshot) {
+              if (snapshot.hasError) {
+                return const Text('Could not load invitations. Check Firestore rules.');
+              }
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return const Padding(
+                  padding: EdgeInsets.all(16),
+                  child: Center(child: CircularProgressIndicator()),
+                );
+              }
+              final docs = snapshot.data?.docs ?? [];
+              if (docs.isEmpty) return const Text('No employee invitations yet.');
+              return Column(
+                children: docs.map((doc) {
+                  final data = doc.data();
+                  final status = (data['status'] ?? 'Pending').toString();
+                  return ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    leading: CircleAvatar(
+                      backgroundColor: const Color(0xFFF2E8CC),
+                      child: const Icon(Icons.person_outline, color: purple),
+                    ),
+                    title: Text((data['invitedName'] ?? 'Employee').toString()),
+                    subtitle: Text(
+                      '${data['email'] ?? ''} • ${data['department'] ?? 'Department not set'}',
+                    ),
+                    trailing: Chip(
+                      label: Text(status),
+                      backgroundColor: status == 'Accepted'
+                          ? const Color(0xFFE2F3E7)
+                          : const Color(0xFFFFF2D6),
+                    ),
+                  );
+                }).toList(),
+              );
+            },
+          ),
+          const SizedBox(height: 16),
+          const Text('Active team members',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: navy)),
+          const SizedBox(height: 10),
+          StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+            stream: FirebaseFirestore.instance
+                .collection('users')
+                .where('employerUid', isEqualTo: employer.uid)
+                .snapshots(),
+            builder: (context, snapshot) {
+              if (snapshot.hasError) {
+                return const Text('Could not load team members. Check employee profile read rules.');
+              }
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return const Padding(
+                  padding: EdgeInsets.all(16),
+                  child: Center(child: CircularProgressIndicator()),
+                );
+              }
+              final docs = snapshot.data?.docs ?? [];
+              if (docs.isEmpty) return const Text('Employees will appear here after accepting an invitation.');
+              return Column(
+                children: docs.map((doc) {
+                  final data = doc.data();
+                  return ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    leading: const CircleAvatar(
+                      backgroundColor: Color(0xFFE8E3D7),
+                      child: Icon(Icons.badge_outlined, color: navy),
+                    ),
+                    title: Text((data['name'] ?? 'Employee').toString()),
+                    subtitle: Text(
+                      '${data['email'] ?? ''} • ${data['department'] ?? 'Department not set'}',
+                    ),
+                    trailing: const Chip(
+                      label: Text('Active'),
+                      backgroundColor: Color(0xFFE2F3E7),
+                    ),
+                  );
+                }).toList(),
+              );
+            },
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _AdminCorporateEnquiriesPanel extends StatelessWidget {
+  const _AdminCorporateEnquiriesPanel();
+
+  String _dateLabel(dynamic value) {
+    if (value is Timestamp) {
+      final date = value.toDate().toLocal();
+      return '${date.day.toString().padLeft(2, '0')}/'
+          '${date.month.toString().padLeft(2, '0')}/${date.year}';
+    }
+    return 'Date not available';
+  }
+
+  Future<void> _changeStatus(
+      BuildContext context,
+      QueryDocumentSnapshot<Map<String, dynamic>> doc,
+      String status,
+      ) async {
+    final user = FirebaseAuth.instance.currentUser;
+    try {
+      await doc.reference.update({
+        'status': status,
+        'reviewedAt': FieldValue.serverTimestamp(),
+        'reviewedBy': user?.uid ?? '',
+      });
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Corporate enquiry marked "$status".')),
+      );
+    } on FirebaseException catch (e) {
+      if (!context.mounted) return;
+      final message = e.code == 'permission-denied'
+          ? 'Permission denied. Update and publish the enquiries rules for Super Admin.'
+          : 'Could not update this enquiry (${e.code}).';
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(message)),
+      );
+    } catch (_) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Could not update this enquiry. Please try again.')),
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        const Text(
+          'Corporate Enquiries',
+          style: TextStyle(fontSize: 24, color: navy, fontWeight: FontWeight.bold),
+        ),
+        const SizedBox(height: 6),
+        const Text(
+          'View organisation training requests and manage their follow-up status.',
+          style: TextStyle(color: Colors.black54, height: 1.5),
+        ),
+        const SizedBox(height: 14),
+        StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+          stream: FirebaseFirestore.instance.collection('enquiries').snapshots(),
+          builder: (context, snapshot) {
+            if (snapshot.hasError) {
+              return Card(
+                color: Colors.white,
+                child: Padding(
+                  padding: const EdgeInsets.all(20),
+                  child: Text(
+                    'Could not load corporate enquiries. Check that Super Admin has read permission for the enquiries collection. Details: ${snapshot.error}',
+                  ),
+                ),
+              );
+            }
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return const Center(
+                child: Padding(
+                  padding: EdgeInsets.all(24),
+                  child: CircularProgressIndicator(),
+                ),
+              );
+            }
+
+            final docs = [...?snapshot.data?.docs];
+            docs.sort((a, b) {
+              final aValue = a.data()['createdAt'];
+              final bValue = b.data()['createdAt'];
+              final aTime = aValue is Timestamp ? aValue.millisecondsSinceEpoch : 0;
+              final bTime = bValue is Timestamp ? bValue.millisecondsSinceEpoch : 0;
+              return bTime.compareTo(aTime);
+            });
+
+            if (docs.isEmpty) {
+              return const Card(
+                color: Colors.white,
+                child: Padding(
+                  padding: EdgeInsets.all(22),
+                  child: Text('No corporate enquiries have been submitted yet.'),
+                ),
+              );
+            }
+
+            final newCount = docs.where((doc) => (doc.data()['status'] ?? 'New') == 'New').length;
+            final progressCount = docs.where((doc) => doc.data()['status'] == 'In Progress').length;
+            final completedCount = docs.where((doc) => doc.data()['status'] == 'Completed').length;
+
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Wrap(
+                  spacing: 10,
+                  runSpacing: 10,
+                  children: [
+                    _AdminStatCard(label: 'Total enquiries', value: '${docs.length}', icon: Icons.business_center_outlined),
+                    _AdminStatCard(label: 'New', value: '$newCount', icon: Icons.mark_email_unread_outlined),
+                    _AdminStatCard(label: 'In Progress', value: '$progressCount', icon: Icons.pending_actions_outlined),
+                    _AdminStatCard(label: 'Completed', value: '$completedCount', icon: Icons.task_alt_outlined),
+                  ],
+                ),
+                const SizedBox(height: 14),
+                for (final doc in docs)
+                  _AdminCorporateEnquiryCard(
+                    data: doc.data(),
+                    dateLabel: _dateLabel(doc.data()['createdAt']),
+                    onStatusChanged: (status) => _changeStatus(context, doc, status),
+                  ),
+              ],
+            );
+          },
+        ),
+      ],
+    );
+  }
+}
+
+class _AdminCorporateEnquiryCard extends StatelessWidget {
+  final Map<String, dynamic> data;
+  final String dateLabel;
+  final ValueChanged<String> onStatusChanged;
+
+  const _AdminCorporateEnquiryCard({
+    required this.data,
+    required this.dateLabel,
+    required this.onStatusChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final status = (data['status'] ?? 'New').toString();
+    final statusColor = status == 'Completed'
+        ? Colors.green
+        : status == 'In Progress'
+        ? Colors.blue
+        : purple;
+
+    Widget detail(IconData icon, String value) {
+      return Padding(
+        padding: const EdgeInsets.only(bottom: 7),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Icon(icon, size: 17, color: purple),
+            const SizedBox(width: 8),
+            Expanded(child: Text(value, style: const TextStyle(color: Colors.black54))),
+          ],
+        ),
+      );
+    }
+
+    return Card(
+      color: Colors.white,
+      margin: const EdgeInsets.only(bottom: 12),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(18),
+        side: const BorderSide(color: Color(0xFFE8D9B8)),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(18),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Wrap(
+              spacing: 10,
+              runSpacing: 8,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              children: [
+                Text(
+                  (data['organization'] ?? 'Organisation not provided').toString(),
+                  style: const TextStyle(fontSize: 17, fontWeight: FontWeight.bold, color: navy),
+                ),
+                Chip(
+                  label: Text(status, style: TextStyle(color: statusColor, fontWeight: FontWeight.w700)),
+                  backgroundColor: statusColor.withValues(alpha: .10),
+                  side: BorderSide.none,
+                ),
+              ],
+            ),
+            const SizedBox(height: 10),
+            detail(Icons.person_outline, (data['name'] ?? 'Name not provided').toString()),
+            detail(Icons.email_outlined, (data['email'] ?? 'No email').toString()),
+            detail(Icons.phone_outlined, (data['phone'] ?? 'No phone number').toString()),
+            detail(Icons.school_outlined, (data['enquiryType'] ?? 'Training type not specified').toString()),
+            detail(Icons.calendar_today_outlined, 'Submitted: $dateLabel'),
+            const SizedBox(height: 6),
+            const Text('Training requirements', style: TextStyle(fontWeight: FontWeight.w700, color: navy)),
+            const SizedBox(height: 4),
+            Text((data['message'] ?? 'No message provided').toString(), style: const TextStyle(color: Colors.black87, height: 1.45)),
+            const SizedBox(height: 14),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                OutlinedButton.icon(
+                  onPressed: status == 'In Progress' ? null : () => onStatusChanged('In Progress'),
+                  icon: const Icon(Icons.pending_actions_outlined),
+                  label: const Text('In Progress'),
+                ),
+                OutlinedButton.icon(
+                  onPressed: status == 'Completed' ? null : () => onStatusChanged('Completed'),
+                  icon: const Icon(Icons.check_circle_outline),
+                  label: const Text('Mark Completed'),
+                ),
+                TextButton.icon(
+                  onPressed: status == 'New' ? null : () => onStatusChanged('New'),
+                  icon: const Icon(Icons.restart_alt),
+                  label: const Text('Mark New'),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+
+class _AdminCoachingRequestsPanel extends StatelessWidget {
+  const _AdminCoachingRequestsPanel();
+
+  String _formatDate(dynamic value) {
+    if (value is Timestamp) {
+      final date = value.toDate();
+      return '${date.day.toString().padLeft(2, '0')}/'
+          '${date.month.toString().padLeft(2, '0')}/${date.year}';
+    }
+    return 'Not provided';
+  }
+
+  Future<void> _updateStatus(
+      BuildContext context,
+      QueryDocumentSnapshot<Map<String, dynamic>> doc,
+      String status,
+      ) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text('$status coaching request?'),
+        content: Text('Update the request from ${(doc.data()['name'] ?? 'this learner').toString()} to $status?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: Text('Confirm'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+
+    final user = FirebaseAuth.instance.currentUser;
+    try {
+      await doc.reference.update({
+        'status': status,
+        'reviewedAt': FieldValue.serverTimestamp(),
+        'reviewedBy': user?.uid ?? '',
+      });
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Coaching request marked $status.')),
+      );
+    } on FirebaseException catch (e) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(e.code == 'permission-denied'
+              ? 'Permission denied. Publish the updated coaching request Firestore rules.'
+              : 'Could not update request. Please try again.'),
+        ),
+      );
+    } catch (_) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Could not update request. Please try again.')),
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        const Text(
+          'Coaching & Mentorship Requests',
+          style: TextStyle(fontSize: 24, color: navy, fontWeight: FontWeight.bold),
+        ),
+        const SizedBox(height: 6),
+        const Text(
+          'Review individual coaching requests and update their status.',
+          style: TextStyle(color: Colors.black54, height: 1.5),
+        ),
+        const SizedBox(height: 14),
+        StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+          stream: FirebaseFirestore.instance
+              .collectionGroup('coaching_requests')
+              .snapshots(),
+          builder: (context, snapshot) {
+            if (snapshot.hasError) {
+              return Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(20),
+                  child: Text(
+                    'Could not load coaching requests. Check that the updated Firestore rules are published. Details: ${snapshot.error}',
+                  ),
+                ),
+              );
+            }
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return const Center(
+                child: Padding(
+                  padding: EdgeInsets.all(24),
+                  child: CircularProgressIndicator(),
+                ),
+              );
+            }
+
+            final docs = [...?snapshot.data?.docs];
+            docs.sort((a, b) {
+              final aValue = a.data()['createdAt'];
+              final bValue = b.data()['createdAt'];
+              final aTime = aValue is Timestamp ? aValue.millisecondsSinceEpoch : 0;
+              final bTime = bValue is Timestamp ? bValue.millisecondsSinceEpoch : 0;
+              return bTime.compareTo(aTime);
+            });
+
+            if (docs.isEmpty) {
+              return const Card(
+                color: Colors.white,
+                child: Padding(
+                  padding: EdgeInsets.all(22),
+                  child: Text('No coaching requests have been submitted yet.'),
+                ),
+              );
+            }
+
+            final pendingCount = docs.where((doc) => doc.data()['status'] == 'Pending').length;
+            final approvedCount = docs.where((doc) => doc.data()['status'] == 'Approved').length;
+            final rejectedCount = docs.where((doc) => doc.data()['status'] == 'Rejected').length;
+
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Wrap(
+                  spacing: 10,
+                  runSpacing: 10,
+                  children: [
+                    _AdminStatCard(label: 'Total requests', value: '${docs.length}', icon: Icons.diversity_3_outlined),
+                    _AdminStatCard(label: 'Pending', value: '$pendingCount', icon: Icons.hourglass_top_rounded),
+                    _AdminStatCard(label: 'Approved', value: '$approvedCount', icon: Icons.check_circle_outline),
+                    _AdminStatCard(label: 'Rejected', value: '$rejectedCount', icon: Icons.cancel_outlined),
+                  ],
+                ),
+                const SizedBox(height: 14),
+                for (final doc in docs)
+                  _AdminCoachingRequestCard(
+                    data: doc.data(),
+                    dateLabel: _formatDate(doc.data()['preferredDate']),
+                    onStatusChanged: (status) => _updateStatus(context, doc, status),
+                  ),
+              ],
+            );
+          },
+        ),
+      ],
+    );
+  }
+}
+
+class _AdminCoachingRequestCard extends StatelessWidget {
+  final Map<String, dynamic> data;
+  final String dateLabel;
+  final ValueChanged<String> onStatusChanged;
+
+  const _AdminCoachingRequestCard({
+    required this.data,
+    required this.dateLabel,
+    required this.onStatusChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final status = (data['status'] ?? 'Pending').toString();
+    final statusColor = status == 'Approved'
+        ? Colors.green
+        : status == 'Rejected'
+        ? Colors.red
+        : purple;
+
+    return Card(
+      color: Colors.white,
+      margin: const EdgeInsets.only(bottom: 12),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(18),
+        side: const BorderSide(color: Color(0xFFE8D9B8)),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(18),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Wrap(
+              spacing: 10,
+              runSpacing: 8,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              children: [
+                Text(
+                  (data['name'] ?? 'Name not provided').toString(),
+                  style: const TextStyle(fontSize: 17, fontWeight: FontWeight.bold, color: navy),
+                ),
+                Chip(
+                  label: Text(status, style: TextStyle(color: statusColor, fontWeight: FontWeight.w700)),
+                  backgroundColor: statusColor.withValues(alpha: 0.10),
+                  side: BorderSide.none,
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            _detail(Icons.email_outlined, (data['email'] ?? 'No email').toString()),
+            _detail(Icons.psychology_alt_outlined, (data['coachingType'] ?? 'Not specified').toString()),
+            _detail(Icons.calendar_month_outlined, 'Preferred date: $dateLabel'),
+            const SizedBox(height: 8),
+            const Text('Learner message', style: TextStyle(fontWeight: FontWeight.w700, color: navy)),
+            const SizedBox(height: 4),
+            Text((data['message'] ?? 'No message provided').toString(), style: const TextStyle(color: Colors.black87, height: 1.45)),
+            const SizedBox(height: 14),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                OutlinedButton.icon(
+                  onPressed: status == 'Approved' ? null : () => onStatusChanged('Approved'),
+                  icon: const Icon(Icons.check_circle_outline),
+                  label: const Text('Approve'),
+                ),
+                OutlinedButton.icon(
+                  onPressed: status == 'Rejected' ? null : () => onStatusChanged('Rejected'),
+                  icon: const Icon(Icons.cancel_outlined),
+                  label: const Text('Reject'),
+                ),
+                TextButton.icon(
+                  onPressed: status == 'Pending' ? null : () => onStatusChanged('Pending'),
+                  icon: const Icon(Icons.restart_alt),
+                  label: const Text('Mark Pending'),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _detail(IconData icon, String value) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 6),
+      child: Row(
+        children: [
+          Icon(icon, size: 17, color: purple),
+          const SizedBox(width: 8),
+          Expanded(child: Text(value, style: const TextStyle(color: Colors.black54))),
+        ],
+      ),
+    );
+  }
+}
 
 class _ActivityLogPanel extends StatelessWidget {
   const _ActivityLogPanel();
@@ -4883,6 +6818,14 @@ class IndividualLearningDashboard extends StatelessWidget {
             );
           },
         ),
+        const SizedBox(height: 28),
+        CoachingRequestSection(
+          uid: uid,
+          userName: FirebaseAuth.instance.currentUser?.displayName ?? '',
+          userEmail: FirebaseAuth.instance.currentUser?.email ?? '',
+        ),
+        const SizedBox(height: 20),
+        MyCoachingRequestsSection(uid: uid),
         const SizedBox(height: 24),
         const Text('Explore Courses', style: TextStyle(fontSize: 21, color: navy, fontWeight: FontWeight.bold)),
         const SizedBox(height: 12),
@@ -4928,6 +6871,774 @@ class IndividualLearningDashboard extends StatelessWidget {
         const SizedBox(height: 20),
         const Text('Progress is a prototype tracker: each lesson-complete action advances progress by 25%.', style: TextStyle(color: Colors.black54, fontSize: 12)),
       ],
+    );
+  }
+}
+
+
+// -------------------- EMPLOYEE ASSIGNED LEARNING --------------------
+
+class EmployeeLearningDashboard extends StatelessWidget {
+  final String? userId;
+
+  const EmployeeLearningDashboard({super.key, required this.userId});
+
+  String _dateLabel(dynamic value) {
+    if (value is! Timestamp) return 'No deadline set';
+    final date = value.toDate();
+    return '${date.day.toString().padLeft(2, '0')}/'
+        '${date.month.toString().padLeft(2, '0')}/${date.year}';
+  }
+
+  Future<void> _completeNextLesson(
+      BuildContext context,
+      DocumentSnapshot<Map<String, dynamic>> assignment,
+      ) async {
+    final data = assignment.data() ?? <String, dynamic>{};
+    final current = ((data['progress'] as num?)?.toInt() ?? 0).clamp(0, 100);
+    if (current >= 100) return;
+
+    final next = (current + 25).clamp(0, 100);
+    try {
+      await assignment.reference.update({
+        'progress': next,
+        'status': next >= 100 ? 'Completed' : 'In Progress',
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            next >= 100
+                ? 'Great work! You completed ${data['courseTitle'] ?? 'this course'}.'
+                : 'Your learning progress is now $next%.',
+          ),
+        ),
+      );
+    } on FirebaseException catch (e) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            e.code == 'permission-denied'
+                ? 'Progress update was blocked. Check the employee assignment update rules in Firestore.'
+                : 'Could not update progress. Please try again.',
+          ),
+        ),
+      );
+    } catch (_) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Could not update progress. Please try again.')),
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final uid = userId;
+    if (uid == null) {
+      return const Card(
+        child: Padding(
+          padding: EdgeInsets.all(20),
+          child: Text('Please sign in to view your assigned learning.'),
+        ),
+      );
+    }
+
+    final assignments = FirebaseFirestore.instance
+        .collection('corporate_course_assignments')
+        .where('employeeUid', isEqualTo: uid);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+          stream: assignments.snapshots(),
+          builder: (context, snapshot) {
+            if (snapshot.hasError) {
+              return const Card(
+                child: Padding(
+                  padding: EdgeInsets.all(18),
+                  child: Text(
+                    'Could not load your assigned courses. Check the employee assignment read rules in Firestore.',
+                  ),
+                ),
+              );
+            }
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return const Padding(
+                padding: EdgeInsets.all(20),
+                child: Center(child: CircularProgressIndicator()),
+              );
+            }
+
+            final docs = snapshot.data?.docs ?? [];
+            final completed = docs.where((doc) {
+              final data = doc.data();
+              return ((data['progress'] as num?)?.toInt() ?? 0) >= 100 ||
+                  data['status'] == 'Completed';
+            }).length;
+            final inProgress = docs.where((doc) {
+              final data = doc.data();
+              final progress = (data['progress'] as num?)?.toInt() ?? 0;
+              return progress > 0 && progress < 100;
+            }).length;
+
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Wrap(
+                  spacing: 12,
+                  runSpacing: 12,
+                  children: [
+                    _AdminStatCard(
+                      label: 'Assigned courses',
+                      value: '${docs.length}',
+                      icon: Icons.menu_book_outlined,
+                    ),
+                    _AdminStatCard(
+                      label: 'In progress',
+                      value: '$inProgress',
+                      icon: Icons.timelapse_rounded,
+                    ),
+                    _AdminStatCard(
+                      label: 'Completed',
+                      value: '$completed',
+                      icon: Icons.task_alt_rounded,
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 24),
+                const Text(
+                  'Courses Assigned by Your Organisation',
+                  style: TextStyle(fontSize: 21, color: navy, fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 12),
+                if (docs.isEmpty)
+                  const Card(
+                    color: Colors.white,
+                    child: Padding(
+                      padding: EdgeInsets.all(20),
+                      child: Text(
+                        'You do not have any assigned courses yet. Your employer will add courses to your learning workspace.',
+                      ),
+                    ),
+                  )
+                else
+                  ...docs.map((doc) {
+                    final data = doc.data();
+                    final progress = ((data['progress'] as num?)?.toInt() ?? 0)
+                        .clamp(0, 100);
+                    final isCompleted = progress >= 100 || data['status'] == 'Completed';
+                    final status = isCompleted
+                        ? 'Completed'
+                        : progress > 0
+                        ? 'In Progress'
+                        : 'Assigned';
+                    final deadline = _dateLabel(data['deadline']);
+
+                    return Card(
+                      color: Colors.white,
+                      child: Padding(
+                        padding: const EdgeInsets.all(20),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const CircleAvatar(
+                                  backgroundColor: Color(0xFFF2E8CC),
+                                  child: Icon(Icons.menu_book_rounded, color: purple),
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        (data['courseTitle'] ?? 'Assigned course').toString(),
+                                        style: const TextStyle(
+                                          color: navy,
+                                          fontSize: 17,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 4),
+                                      Text(
+                                        (data['category'] ?? 'Professional Development').toString(),
+                                        style: const TextStyle(
+                                          color: purple,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                Chip(
+                                  label: Text(status),
+                                  avatar: Icon(
+                                    isCompleted ? Icons.check_circle : Icons.assignment_outlined,
+                                    size: 17,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 12),
+                            Text(
+                              (data['description'] ?? '').toString(),
+                              style: const TextStyle(color: Colors.black54, height: 1.5),
+                            ),
+                            const SizedBox(height: 12),
+                            Row(
+                              children: [
+                                const Icon(Icons.calendar_month_outlined, size: 18, color: purple),
+                                const SizedBox(width: 7),
+                                Text('Due: $deadline'),
+                                const Spacer(),
+                                Text(
+                                  '$progress%',
+                                  style: const TextStyle(color: purple, fontWeight: FontWeight.bold),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 8),
+                            ClipRRect(
+                              borderRadius: BorderRadius.circular(20),
+                              child: LinearProgressIndicator(
+                                value: progress / 100,
+                                minHeight: 9,
+                                backgroundColor: const Color(0xFFE5DDCC),
+                                color: isCompleted ? Colors.green : purple,
+                              ),
+                            ),
+                            const SizedBox(height: 14),
+                            Align(
+                              alignment: Alignment.centerLeft,
+                              child: isCompleted
+                                  ? const Chip(
+                                avatar: Icon(Icons.verified_rounded, color: Colors.green, size: 18),
+                                label: Text('Course completed'),
+                              )
+                                  : FilledButton.icon(
+                                onPressed: () => _completeNextLesson(context, doc),
+                                icon: const Icon(Icons.check_circle_outline),
+                                label: Text(progress == 75 ? 'Complete course' : 'Complete next lesson'),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  }),
+              ],
+            );
+          },
+        ),
+        const SizedBox(height: 28),
+        CoachingRequestSection(
+          uid: uid,
+          userName: FirebaseAuth.instance.currentUser?.displayName ?? '',
+          userEmail: FirebaseAuth.instance.currentUser?.email ?? '',
+        ),
+        const SizedBox(height: 20),
+        MyCoachingRequestsSection(uid: uid),
+      ],
+    );
+  }
+}
+
+class MyCoachingRequestsSection extends StatelessWidget {
+  final String uid;
+
+  const MyCoachingRequestsSection({super.key, required this.uid});
+
+  Color _statusColor(String status) {
+    switch (status) {
+      case 'Approved':
+        return const Color(0xFF218A43);
+      case 'Rejected':
+        return const Color(0xFFC0392B);
+      default:
+        return const Color(0xFF9A741F);
+    }
+  }
+
+  IconData _statusIcon(String status) {
+    switch (status) {
+      case 'Approved':
+        return Icons.check_circle_outline_rounded;
+      case 'Rejected':
+        return Icons.cancel_outlined;
+      default:
+        return Icons.hourglass_top_rounded;
+    }
+  }
+
+  String _dateText(dynamic value) {
+    if (value is Timestamp) {
+      final date = value.toDate();
+      return '${date.day.toString().padLeft(2, '0')}/'
+          '${date.month.toString().padLeft(2, '0')}/'
+          '${date.year}';
+    }
+    return 'Date not available';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        const Text(
+          'My Coaching Requests',
+          style: TextStyle(fontSize: 21, color: navy, fontWeight: FontWeight.bold),
+        ),
+        const SizedBox(height: 6),
+        const Text(
+          'Track the review status of your coaching session requests.',
+          style: TextStyle(color: Colors.black54, height: 1.5),
+        ),
+        const SizedBox(height: 12),
+        StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+          stream: FirebaseFirestore.instance
+              .collection('users')
+              .doc(uid)
+              .collection('coaching_requests')
+              .snapshots(),
+          builder: (context, snapshot) {
+            if (snapshot.hasError) {
+              return const Card(
+                color: Colors.white,
+                child: Padding(
+                  padding: EdgeInsets.all(18),
+                  child: Text(
+                    'Could not load your coaching request status. Please check your Firestore read rules.',
+                  ),
+                ),
+              );
+            }
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return const Padding(
+                padding: EdgeInsets.all(18),
+                child: Center(child: CircularProgressIndicator()),
+              );
+            }
+
+            final docs = [...?snapshot.data?.docs];
+            docs.sort((a, b) {
+              final aCreated = a.data()['createdAt'];
+              final bCreated = b.data()['createdAt'];
+              final aTime = aCreated is Timestamp ? aCreated.millisecondsSinceEpoch : 0;
+              final bTime = bCreated is Timestamp ? bCreated.millisecondsSinceEpoch : 0;
+              return bTime.compareTo(aTime);
+            });
+
+            if (docs.isEmpty) {
+              return const Card(
+                color: Colors.white,
+                child: Padding(
+                  padding: EdgeInsets.all(18),
+                  child: Row(
+                    children: [
+                      Icon(Icons.event_note_outlined, color: purple, size: 28),
+                      SizedBox(width: 12),
+                      Expanded(
+                        child: Text('You have not submitted a coaching request yet.'),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            }
+
+            return Column(
+              children: docs.map((doc) {
+                final data = doc.data();
+                final status = (data['status'] ?? 'Pending').toString();
+                final statusColor = _statusColor(status);
+                return Card(
+                  color: Colors.white,
+                  margin: const EdgeInsets.only(bottom: 10),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                    side: const BorderSide(color: Color(0xFFE8D9B8)),
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Wrap(
+                          spacing: 10,
+                          runSpacing: 8,
+                          crossAxisAlignment: WrapCrossAlignment.center,
+                          children: [
+                            Text(
+                              (data['coachingType'] ?? 'Coaching session').toString(),
+                              style: const TextStyle(
+                                color: navy,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 16,
+                              ),
+                            ),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                              decoration: BoxDecoration(
+                                color: statusColor.withValues(alpha: 0.10),
+                                borderRadius: BorderRadius.circular(20),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(_statusIcon(status), size: 15, color: statusColor),
+                                  const SizedBox(width: 5),
+                                  Text(
+                                    status,
+                                    style: TextStyle(
+                                      color: statusColor,
+                                      fontWeight: FontWeight.w700,
+                                      fontSize: 12,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 10),
+                        Row(
+                          children: [
+                            const Icon(Icons.calendar_month_outlined, size: 17, color: purple),
+                            const SizedBox(width: 8),
+                            Text(
+                              'Preferred date: ${_dateText(data['preferredDate'])}',
+                              style: const TextStyle(color: Colors.black54),
+                            ),
+                          ],
+                        ),
+                        if ((data['message'] ?? '').toString().trim().isNotEmpty) ...[
+                          const SizedBox(height: 9),
+                          const Text(
+                            'Your message',
+                            style: TextStyle(fontWeight: FontWeight.w600, color: navy),
+                          ),
+                          const SizedBox(height: 3),
+                          Text(
+                            data['message'].toString(),
+                            style: const TextStyle(color: Colors.black54, height: 1.4),
+                          ),
+                        ],
+                        const SizedBox(height: 10),
+                        Text(
+                          status == 'Approved'
+                              ? 'Your request has been approved. The MT Alchemy team can follow up with you about the session.'
+                              : status == 'Rejected'
+                              ? 'This request was not approved. Please contact the MT Alchemy team if you need assistance.'
+                              : 'Your request is awaiting review by the MT Alchemy team.',
+                          style: TextStyle(
+                            color: statusColor,
+                            fontSize: 12,
+                            height: 1.4,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              }).toList(),
+            );
+          },
+        ),
+      ],
+    );
+  }
+}
+
+class CoachingRequestSection extends StatefulWidget {
+  final String uid;
+  final String userName;
+  final String userEmail;
+
+  const CoachingRequestSection({
+    super.key,
+    required this.uid,
+    required this.userName,
+    required this.userEmail,
+  });
+
+  @override
+  State<CoachingRequestSection> createState() => _CoachingRequestSectionState();
+}
+
+class _CoachingRequestSectionState extends State<CoachingRequestSection> {
+  final _formKey = GlobalKey<FormState>();
+  late final TextEditingController _nameController;
+  late final TextEditingController _emailController;
+  final TextEditingController _messageController = TextEditingController();
+  String _coachingType = 'Personal Growth';
+  DateTime? _preferredDate;
+  bool _isSubmitting = false;
+
+  static const List<String> _coachingTypes = [
+    'Personal Growth',
+    'Communication Skills',
+    'Leadership Development',
+    'Mindfulness & Well-being',
+    'Career Guidance',
+  ];
+
+  @override
+  void initState() {
+    super.initState();
+    _nameController = TextEditingController(text: widget.userName);
+    _emailController = TextEditingController(text: widget.userEmail);
+  }
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _emailController.dispose();
+    _messageController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _chooseDate() async {
+    final today = DateTime.now();
+    final selected = await showDatePicker(
+      context: context,
+      initialDate: _preferredDate ?? today.add(const Duration(days: 1)),
+      firstDate: DateTime(today.year, today.month, today.day),
+      lastDate: today.add(const Duration(days: 365)),
+      helpText: 'Choose your preferred coaching date',
+    );
+    if (selected != null && mounted) {
+      setState(() => _preferredDate = selected);
+    }
+  }
+
+  Future<void> _submitRequest() async {
+    if (!_formKey.currentState!.validate()) return;
+    if (_preferredDate == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please choose your preferred date.')),
+      );
+      return;
+    }
+
+    setState(() => _isSubmitting = true);
+    try {
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(widget.uid)
+          .collection('coaching_requests')
+          .add({
+        'userId': widget.uid,
+        'name': _nameController.text.trim(),
+        'email': _emailController.text.trim(),
+        'coachingType': _coachingType,
+        'preferredDate': Timestamp.fromDate(_preferredDate!),
+        'message': _messageController.text.trim(),
+        'status': 'Pending',
+        'createdAt': FieldValue.serverTimestamp(),
+      });
+
+      if (!mounted) return;
+      _formKey.currentState!.reset();
+      _messageController.clear();
+      setState(() {
+        _preferredDate = null;
+        _coachingType = _coachingTypes.first;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Your coaching request has been submitted successfully.'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    } on FirebaseException catch (e) {
+      if (!mounted) return;
+      final message = e.code == 'permission-denied'
+          ? 'Request could not be saved. Firestore rules must allow users to create their own coaching requests.'
+          : 'Could not submit your request. Please try again.';
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(message), behavior: SnackBarBehavior.floating),
+      );
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Something went wrong. Please try again.')),
+      );
+    } finally {
+      if (mounted) setState(() => _isSubmitting = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final dateLabel = _preferredDate == null
+        ? 'Choose a date'
+        : '${_preferredDate!.day.toString().padLeft(2, '0')}/'
+        '${_preferredDate!.month.toString().padLeft(2, '0')}/'
+        '${_preferredDate!.year}';
+
+    return Container(
+      padding: const EdgeInsets.all(22),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(color: const Color(0xFFE8D9B8)),
+        boxShadow: [
+          BoxShadow(
+            color: navy.withValues(alpha: 0.04),
+            blurRadius: 18,
+            offset: const Offset(0, 7),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 48,
+                height: 48,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF5EBD5),
+                  borderRadius: BorderRadius.circular(15),
+                ),
+                child: const Icon(Icons.diversity_3_rounded, color: purple, size: 26),
+              ),
+              const SizedBox(width: 14),
+              const Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Coaching & Mentorship',
+                      style: TextStyle(fontSize: 21, color: navy, fontWeight: FontWeight.bold),
+                    ),
+                    SizedBox(height: 4),
+                    Text(
+                      'Get personalised support for your next step.',
+                      style: TextStyle(color: Colors.black54, height: 1.4),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 18),
+          const Text(
+            'Request a coaching session',
+            style: TextStyle(fontSize: 16, color: navy, fontWeight: FontWeight.w700),
+          ),
+          const SizedBox(height: 6),
+          const Text(
+            'Share your goals and preferred date. The MT Alchemy team can follow up with you.',
+            style: TextStyle(color: Colors.black54, height: 1.5),
+          ),
+          const SizedBox(height: 18),
+          Form(
+            key: _formKey,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                TextFormField(
+                  controller: _nameController,
+                  textCapitalization: TextCapitalization.words,
+                  decoration: const InputDecoration(
+                    labelText: 'Full name *',
+                    prefixIcon: Icon(Icons.person_outline),
+                    border: OutlineInputBorder(),
+                  ),
+                  validator: (value) => value == null || value.trim().isEmpty
+                      ? 'Please enter your name'
+                      : null,
+                ),
+                const SizedBox(height: 14),
+                TextFormField(
+                  controller: _emailController,
+                  keyboardType: TextInputType.emailAddress,
+                  decoration: const InputDecoration(
+                    labelText: 'Email address *',
+                    prefixIcon: Icon(Icons.email_outlined),
+                    border: OutlineInputBorder(),
+                  ),
+                  validator: (value) => value == null ||
+                      !RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(value.trim())
+                      ? 'Please enter a valid email address'
+                      : null,
+                ),
+                const SizedBox(height: 14),
+                DropdownButtonFormField<String>(
+                  initialValue: _coachingType,
+                  decoration: const InputDecoration(
+                    labelText: 'Coaching area *',
+                    prefixIcon: Icon(Icons.psychology_alt_outlined),
+                    border: OutlineInputBorder(),
+                  ),
+                  items: _coachingTypes
+                      .map((type) => DropdownMenuItem(value: type, child: Text(type)))
+                      .toList(),
+                  onChanged: (value) {
+                    if (value != null) setState(() => _coachingType = value);
+                  },
+                ),
+                const SizedBox(height: 14),
+                OutlinedButton.icon(
+                  onPressed: _isSubmitting ? null : _chooseDate,
+                  icon: const Icon(Icons.calendar_month_outlined),
+                  label: Text('Preferred date: $dateLabel'),
+                  style: OutlinedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 17),
+                    alignment: Alignment.centerLeft,
+                  ),
+                ),
+                const SizedBox(height: 14),
+                TextFormField(
+                  controller: _messageController,
+                  minLines: 3,
+                  maxLines: 5,
+                  decoration: const InputDecoration(
+                    labelText: 'What would you like help with? *',
+                    alignLabelWithHint: true,
+                    prefixIcon: Icon(Icons.edit_note_rounded),
+                    border: OutlineInputBorder(),
+                  ),
+                  validator: (value) => value == null || value.trim().length < 10
+                      ? 'Please enter at least 10 characters'
+                      : null,
+                ),
+                const SizedBox(height: 18),
+                FilledButton.icon(
+                  onPressed: _isSubmitting ? null : _submitRequest,
+                  icon: _isSubmitting
+                      ? const SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                  )
+                      : const Icon(Icons.send_rounded),
+                  label: Text(_isSubmitting ? 'Submitting...' : 'Request a session'),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: navy,
+                    padding: const EdgeInsets.symmetric(vertical: 17),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                const Text(
+                  'Your request will be saved privately under your account with Pending status.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: Colors.black54, fontSize: 12),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -5576,6 +8287,7 @@ class _RegisterPageState extends State<RegisterPage> {
       'Individual',
       'Employer',
       'Trainer',
+      'Employee',
     };
     if (!allowedRegistrationRoles.contains(selectedRole)) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -5591,32 +8303,88 @@ class _RegisterPageState extends State<RegisterPage> {
     try {
       final credential = await FirebaseAuth.instance
           .createUserWithEmailAndPassword(
-        email: emailController.text.trim(),
+        email: emailController.text.trim().toLowerCase(),
         password: passwordController.text,
       );
 
       final user = credential.user;
 
       if (user != null) {
-        await FirebaseFirestore.instance
-            .collection('users')
-            .doc(user.uid)
-            .set({
+        final emailLower = emailController.text.trim().toLowerCase();
+        Map<String, dynamic>? employeeInvitation;
+
+        if (selectedRole == 'Employee') {
+          final invitationQuery = await FirebaseFirestore.instance
+              .collection('employee_invitations')
+              .where('emailLower', isEqualTo: emailLower)
+              .where('status', isEqualTo: 'Pending')
+              .limit(1)
+              .get();
+
+          if (invitationQuery.docs.isEmpty) {
+            await user.delete();
+            if (!mounted) return;
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('No pending employee invitation was found for this email. Ask your employer to invite you first.'),
+              ),
+            );
+            return;
+          }
+
+          employeeInvitation = invitationQuery.docs.first.data();
+          if ((employeeInvitation['emailLower'] ?? '') != emailLower) {
+            await user.delete();
+            throw Exception('Invitation email does not match.');
+          }
+        }
+
+        final profileData = <String, dynamic>{
           'uid': user.uid,
           'name': nameController.text.trim(),
-          'email': emailController.text.trim(),
+          'email': emailLower,
+          'emailLower': emailLower,
           'role': selectedRole,
           'status': 'Active',
           'createdAt': FieldValue.serverTimestamp(),
-        });
+        };
 
-        await writeActivityLog(
-          action: 'Registered',
-          targetUid: user.uid,
-          targetName: nameController.text.trim(),
-          targetEmail: emailController.text.trim(),
-          newValue: selectedRole,
-        );
+        if (selectedRole == 'Employee' && employeeInvitation != null) {
+          profileData.addAll({
+            'employerUid': employeeInvitation['employerUid'],
+            'organizationName': employeeInvitation['organizationName'] ?? '',
+            'department': employeeInvitation['department'] ?? '',
+            'phone': employeeInvitation['phone'] ?? '',
+            'invitedBy': employeeInvitation['employerUid'],
+            'invitationAcceptedAt': FieldValue.serverTimestamp(),
+          });
+        }
+
+        await FirebaseFirestore.instance
+            .collection('users')
+            .doc(user.uid)
+            .set(profileData);
+
+        if (selectedRole == 'Employee' && employeeInvitation != null) {
+          final invitationDoc = FirebaseFirestore.instance
+              .collection('employee_invitations')
+              .doc(employeeInvitation['invitationId'] as String);
+          await invitationDoc.update({
+            'status': 'Accepted',
+            'acceptedUid': user.uid,
+            'acceptedAt': FieldValue.serverTimestamp(),
+          });
+        }
+
+        if (selectedRole != 'Employee') {
+          await writeActivityLog(
+            action: 'Registered',
+            targetUid: user.uid,
+            targetName: nameController.text.trim(),
+            targetEmail: emailLower,
+            newValue: selectedRole,
+          );
+        }
         await user.updateDisplayName(nameController.text.trim());
       }
 
@@ -5759,6 +8527,10 @@ class _RegisterPageState extends State<RegisterPage> {
                       value: 'Trainer',
                       child: Text('Trainer'),
                     ),
+                    DropdownMenuItem(
+                      value: 'Employee',
+                      child: Text('Employee (invitation required)'),
+                    ),
                   ],
                   onChanged: (value) {
                     if (value != null) {
@@ -5766,6 +8538,13 @@ class _RegisterPageState extends State<RegisterPage> {
                     }
                   },
                 ),
+                if (selectedRole == 'Employee') ...[
+                  const SizedBox(height: 8),
+                  const Text(
+                    'Use the exact email address your employer invited. Your employer cannot see or set your password.',
+                    style: TextStyle(color: Colors.black54, height: 1.4, fontSize: 12),
+                  ),
+                ],
                 const SizedBox(height: 16),
                 const Text('Email address'),
                 const SizedBox(height: 8),
